@@ -1,3 +1,4 @@
+#include <Word.au3>
 #include <Excel.au3>
 #include <Array.au3>
 #include <GUIConstantsEx.au3>
@@ -11,14 +12,14 @@
 
 Opt("GUIOnEventMode", 1)
 
-Global $iProgress = 0
+Global $sExcelFileDirDefault = "\\alpha3\MARKUP\Remarks_Input"
+Global $sRegRemarksFileDefault = @ScriptDir & "\Cover Sheet Template for Regular Remarks.docx"
+Global $sRegSpeechFileDefault = @ScriptDir & "\Cover Sheet Template for Regular Speeches.docx"
 
-Global $sExcelFileDirDefault = @ScriptDir
-
-Global $sExcelFileDir
+Global $sExcelFileDir, $sRegRemarksFile, $sRegSpeechFile
 
 Dim $hGUI, $hTab, $hExcelFolder, $hExcelFile, $hExcelFileLabel, $hDefault_Button, $hApply_Button, $hChooseFileButton, $hExcelRemarksList, _
-	$hCreateAllCoversButton, $hDateLabel, $hDate
+	$hCreateAllCoversButton, $hDateLabel, $hDate, $hRegRemarksFile, $hRegSpeechFile
 
 fuMainGUI()
 
@@ -75,6 +76,20 @@ Func fuMainGUI()
 	GUICtrlSetResizing(-1, $GUI_DOCKMENUBAR)
 	$sExcelFileDir = fuGetRegValsForSettings("excel", $sExcelFileDirDefault)
 	GUICtrlSetData($hExcelFolder, $sExcelFileDir)
+
+	GUICtrlCreateLabel("Location of Regular Remarks Template", 35, 105)
+	GUICtrlSetResizing(-1, $GUI_DOCKMENUBAR)
+	$hRegRemarksFile = GUICtrlCreateInput("", 35, 125, 320, 20)
+	GUICtrlSetResizing(-1, $GUI_DOCKMENUBAR)
+	$sRegRemarksFile = fuGetRegValsForSettings("regremarks", $sRegRemarksFileDefault)
+	GUICtrlSetData($hRegRemarksFile, $sRegRemarksFile)
+
+	GUICtrlCreateLabel("Location of Regular Speeches Template", 35, 165)
+	GUICtrlSetResizing(-1, $GUI_DOCKMENUBAR)
+	$hRegSpeechFile = GUICtrlCreateInput("", 35, 185, 320, 20)
+	GUICtrlSetResizing(-1, $GUI_DOCKMENUBAR)
+	$sRegSpeechFile = fuGetRegValsForSettings("regspeeches", $sRegSpeechFileDefault)
+	GUICtrlSetData($hRegSpeechFile, $sRegSpeechFile)
 
 	$hDefault_Button = GUICtrlCreateButton("Default", 400, 225, 75)
 	GUICtrlSetOnEvent(-1, "On_Click") ; Call a common button function
@@ -134,17 +149,24 @@ Func On_Click()
 			Local $sFileOpenDialog = FileOpenDialog("Select Remarks Spreadsheet", $sExcelFileDir & "\", "Excel (*.xlsm;*.xls)", $FD_FILEMUSTEXIST + $FD_PATHMUSTEXIST, Default, $hGUI)
 			GUICtrlSetData ($hExcelFile, $sFileOpenDialog)
 			Local $aExcelData = fuReadExcelDoc($sFileOpenDialog)
-			_ArrayDisplay($aExcelData, "Excel File Data")
+;~ 			_ArrayDisplay($aExcelData, "Excel File Data")
 			If IsArray($aExcelData) Then fuPopulateListView($aExcelData)
 		Case $hCreateAllCoversButton
 			Local $aAllRemarks = _GUICtrlListView_CreateArray($hExcelRemarksList)
-			_ArrayDisplay($aAllRemarks, "All Remarks in ListView")
+;~ 			_ArrayDisplay($aAllRemarks, "All Remarks in ListView")
+			fuProduceAllCoverSheets($aAllRemarks)
 		Case $hDefault_Button
 			$sExcelFileDir = $sExcelFileDirDefault
 			GUICtrlSetData($hExcelFolder, $sExcelFileDir)
+			$sRegRemarksFile = $sRegRemarksFileDefault
+			GUICtrlSetData($hRegRemarksFile, $sRegRemarksFile)
+			$sRegSpeechFile = $sRegSpeechFileDefault
+			GUICtrlSetData($hRegSpeechFile, $sRegSpeechFile)
 			ContinueCase
 		Case $hApply_Button
 			fuApplySettingsValue($hExcelFolder, "excel")
+			fuApplySettingsValue($hRegRemarksFile, "regremarks")
+			fuApplySettingsValue($hRegSpeechFile, "regspeeches")
 	EndSwitch
 EndFunc   ;==>On_Click
 
@@ -155,10 +177,10 @@ Func fuReadExcelDoc($sExcelDocPath = '')
 	If @error Then
 		MsgBox($MB_SYSTEMMODAL, "Excel UDF: _Excel_BookOpen", "Error opening workbook '" & $sExcelDocPath & @CRLF & "@error = " & @error & ", @extended = " & @extended)
 		_Excel_Close($oExcel)
-		Exit
+		Return
 	EndIf
 	Local $result=_Excel_RangeRead($oWorkbook, Default, Default, Default, True)
-	If @error Then Exit MsgBox($MB_SYSTEMMODAL, "Excel UDF: _Excel_RangeRead", "Error reading from workbook." & @CRLF & "@error = " & @error & ", @extended = " & @extended)
+	If @error Then Return MsgBox($MB_SYSTEMMODAL, "Excel UDF: _Excel_RangeRead", "Error reading from workbook." & @CRLF & "@error = " & @error & ", @extended = " & @extended)
 	_Excel_BookClose($oWorkbook, False)
 	_Excel_Close($oExcel)
 	Return $result
@@ -243,8 +265,108 @@ EndFunc   ;==>_GUICtrlListView_CreateArray
 
 Func fuProduceAllCoverSheets($aRemarks = '')
 	If Not IsArray($aRemarks) Or $aRemarks[0][0] = 0 Then Return MsgBox($MB_ICONERROR, 'Error', 'ListView array is either empty or invalid!!!')
-	For $iRemark = 1 To UBound($aRemarks, 1)
+	Local $asNameState[2]
+	Local $cDay = GUICtrlRead($hDate)
+	Local $aDateTime = StringRegExp($cDay, '(\w+)\s(\d+),\s(\d+)', $STR_REGEXPARRAYMATCH )
+	Local $oWord = _Word_Create(False)
+	If @error Then Exit MsgBox($MB_ICONERROR, "createWordDoc: _Word_Create Template Doc", "Error creating a new Word instance." _
+			 & @CRLF & "@error = " & @error & ", @extended = " & @extended)
+	Local $oDoc = _Word_DocAdd($oWord)
+	If @error Then Exit MsgBox($MB_ICONERROR, "createWordDoc: _Word_DocAdd Template", "Error creating a new Word document from template." _
+			 & @CRLF & "@error = " & @error & ", @extended = " & @extended)
+	ProgressOn("Cover Sheets", "Preparing Cover Sheets", "0%")
+	Local $iProgress = 0
+	For $iRemarkRec = $aRemarks[0][0] To 1 Step -1
+		If $aRemarks[$iRemarkRec][6] <> "" Then
+			$oDoc.Application.Selection.Range.InsertFile($sRegSpeechFile)
+		Else
+			$oDoc.Application.Selection.Range.InsertFile($sRegRemarksFile)
+		EndIf
 
+		_Word_DocFindReplace($oDoc, "HAMMER No.", $aDateTime[1] & " 8 " & $aRemarks[$iRemarkRec][1])
+		If @error Then Exit MsgBox($MB_SYSTEMMODAL, "Word UDF: _Word_DocFindReplace HAMMER No.", _
+			"Error replacing text in the document: HAMMER No." & @CRLF & "@error = " & @error & ", @extended = " & @extended)
+		_Word_DocFindReplace($oDoc, "REMARK TITLE", $aRemarks[$iRemarkRec][9], $wdReplaceOne, Default, True)
+		If @error Then Exit MsgBox($MB_SYSTEMMODAL, "Word UDF: _Word_DocFindReplace REMARK TITLE", _
+			"Error replacing text in the document: REMARK TITLE" & @CRLF & "@error = " & @error & ", @extended = " & @extended)
+		$asNameState = fuExtractMemberName($aRemarks[$iRemarkRec][4])
+		_Word_DocFindReplace($oDoc, "MEMBER NAME", $asNameState[0], $wdReplaceOne, Default, True)
+		If @error Then Exit MsgBox($MB_SYSTEMMODAL, "Word UDF: _Word_DocFindReplace MEMBER NAME", _
+			"Error replacing text in the document: MEMBER NAME" & @CRLF & "@error = " & @error & ", @extended = " & @extended)
+		_Word_DocFindReplace($oDoc, "state name", $asNameState[1], $wdReplaceOne, Default, True)
+		If @error Then Exit MsgBox($MB_SYSTEMMODAL, "Word UDF: _Word_DocFindReplace state name", _
+			"Error replacing text in the document: state name" & @CRLF & "@error = " & @error & ", @extended = " & @extended)
+		_Word_DocFindReplace($oDoc, "Day", $aDateTime[1], $wdReplaceOne, Default, True)
+		If @error Then Exit MsgBox($MB_SYSTEMMODAL, "Word UDF: _Word_DocFindReplace Day", _
+			"Error replacing text in the document: Day" & @CRLF & "@error = " & @error & ", @extended = " & @extended)
+		_Word_DocFindReplace($oDoc, "Month date", $aDateTime[0], $wdReplaceOne, Default, True)
+		If @error Then Exit MsgBox($MB_SYSTEMMODAL, "Word UDF: _Word_DocFindReplace Month date", _
+			"Error replacing text in the document: Month date" & @CRLF & "@error = " & @error & ", @extended = " & @extended)
+		_Word_DocFindReplace($oDoc, "year", $aDateTime[2], $wdReplaceOne, Default, True)
+		If @error Then Exit MsgBox($MB_SYSTEMMODAL, "Word UDF: _Word_DocFindReplace year", _
+			"Error replacing text in the document: year" & @CRLF & "@error = " & @error & ", @extended = " & @extended)
+		_Word_DocFindReplace($oDoc, "Mr. (Mrs./Ms.)", $asNameState[2], $wdReplaceOne, Default, True)
+		If @error Then Exit MsgBox($MB_SYSTEMMODAL, "Word UDF: _Word_DocFindReplace Mr. (Mrs./Ms.)", _
+			"Error replacing text in the document: Mr. (Mrs./Ms.)" & @CRLF & "@error = " & @error & ", @extended = " & @extended)
+		_Word_DocFindReplace($oDoc, "MEMBER LAST NAME", $asNameState[3], $wdReplaceOne, Default, True)
+		If @error Then Exit MsgBox($MB_SYSTEMMODAL, "Word UDF: _Word_DocFindReplace MEMBER LAST NAME", _
+			"Error replacing text in the document: MEMBER LAST NAME" & @CRLF & "@error = " & @error & ", @extended = " & @extended)
+		If $aRemarks[$iRemarkRec][8] <> "" Then
+			_Word_DocFindReplace($oDoc, "Mr. (Madam)", "Madam", $wdReplaceOne, Default, True)
+			If @error Then Exit MsgBox($MB_SYSTEMMODAL, "Word UDF: _Word_DocFindReplace Mr. (Madam)", _
+				"Error replacing text in the document: Mr. (Madam)" & @CRLF & "@error = " & @error & ", @extended = " & @extended)
+		Else
+			_Word_DocFindReplace($oDoc, "Mr. (Madam)", "Mr.", $wdReplaceOne, Default, True)
+			If @error Then Exit MsgBox($MB_SYSTEMMODAL, "Word UDF: _Word_DocFindReplace Mr. (Madam)", _
+				"Error replacing text in the document: Mr. (Madam)" & @CRLF & "@error = " & @error & ", @extended = " & @extended)
+		EndIf
+		if $iRemarkRec <> 1 Then $oDoc.Application.Selection.Range.InsertBreak($wdPageBreak)
+		$iProgress += 1
+		ProgressSet((100 / $aRemarks[0][0]) * ( $iProgress), Int((100 / $aRemarks[0][0]) * ( $iProgress)) & "%")
 	Next
+	ProgressSet(100, "Done!")
+	Sleep(750)
+	ProgressOff()
+	$oWord.Visible = True
+	Return
+EndFunc
 
+Func fuExtractMemberName($sSalutNameState)
+	Local $sSalutations[0], $asNamesState[0]
+	Local $sSalutaion = "", $sNameString = "", $sStateString = "", $sLastName = ""
+	$asNamesState = StringSplit($sSalutNameState, ", ", $STR_ENTIRESPLIT)
+	If $asNamesState[0] = 3 Then
+		$sLastName = (StringStripWS($asNamesState[1], $STR_STRIPLEADING + $STR_STRIPTRAILING))
+		$sNameString = (StringStripWS($asNamesState[2], $STR_STRIPLEADING + $STR_STRIPTRAILING)) _
+				 & " " & (StringStripWS($asNamesState[1], $STR_STRIPLEADING + $STR_STRIPTRAILING))
+		$sStateString = StringStripWS(StringRegExp($asNamesState[3], "(?s)[^\(]*", $STR_REGEXPARRAYMATCH)[0], $STR_STRIPLEADING + $STR_STRIPTRAILING)
+		$sSalutations = StringRegExp($asNamesState[3], "(?s)\((.*)\)", $STR_REGEXPARRAYMATCH)
+		If @error == 1 Then
+			$sSalutation = "Mr."
+		ElseIf @error == 2 Then
+			Exit MsgBox($MB_SYSTEMMODAL, "RegExp: StringStripWS Mr. (Mrs./Ms.)", _
+				"Error replacing text in the document. RegExp: StringStripWS Mr. (Mrs./Ms.)" & @CRLF & "@error = " & @error & ", @extended = " & @extended)
+		Else
+			$sSalutation = $sSalutations[0]
+		EndIf
+	ElseIf $asNamesState[0] = 4 Then
+		$sLastName = (StringStripWS($asNamesState[1], $STR_STRIPLEADING + $STR_STRIPTRAILING))
+		$sNameString = (StringStripWS($asNamesState[2], $STR_STRIPLEADING + $STR_STRIPTRAILING)) _
+				 & " " & (StringStripWS($asNamesState[1], $STR_STRIPLEADING + $STR_STRIPTRAILING)) & ", " _
+				 & (StringStripWS($asNamesState[3], $STR_STRIPLEADING + $STR_STRIPTRAILING))
+		$sStateString = StringStripWS(StringRegExp($asNamesState[4], "(?s)[^\(]*", $STR_REGEXPARRAYMATCH)[0], $STR_STRIPLEADING + $STR_STRIPTRAILING)
+		$sSalutations = StringRegExp($asNamesState[3], "(?s)\((.*)\)", $STR_REGEXPARRAYMATCH  )
+		If @error == 1 Then
+			$sSalutation = "Mr."
+		ElseIf @error == 2 Then
+			Exit MsgBox($MB_SYSTEMMODAL, "RegExp: StringStripWS Mr. (Mrs./Ms.)", _
+				"Error replacing text in the document. RegExp: StringStripWS Mr. (Mrs./Ms.)" & @CRLF & "@error = " & @error & ", @extended = " & @extended)
+		Else
+			$sSalutation = $sSalutations[0]
+		EndIf
+	EndIf
+
+	Local $asNameState[4] = [$sNameString, $sStateString, $sSalutation, $sLastName]
+;~ 	_ArrayDisplay($asNameState, "Salutation, Name, and State Array")
+	Return $asNameState
 EndFunc
