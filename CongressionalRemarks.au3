@@ -19,14 +19,14 @@ Global $sRegSpeechFileDefault = @ScriptDir & "\Cover Sheet Template for Regular 
 Global $sExcelFileDir, $sRegRemarksFile, $sRegSpeechFile
 
 Dim $hGUI, $hTab, $hExcelFolder, $hExcelFile, $hExcelFileLabel, $hDefault_Button, $hApply_Button, $hChooseFileButton, $hExcelRemarksList, _
-	$hCreateAllCoversButton, $hDateLabel, $hDate, $hRegRemarksFile, $hRegSpeechFile
+	$hCreateAllCoversButton, $hCreateSelectedCoversButton, $hDateLabel, $hDate, $hRegRemarksFile, $hRegSpeechFile
 
 fuMainGUI()
 
 ; create GUI and tabs
 Func fuMainGUI()
 
-	$hGUI = GUICreate("Congressional Record Remarks v0.9.0.0", 600, 500, Default, Default,  BitOR($GUI_SS_DEFAULT_GUI, $WS_MAXIMIZEBOX, $WS_SIZEBOX))
+	$hGUI = GUICreate("Congressional Record Remarks v0.9.1.1", 600, 500, Default, Default,  BitOR($GUI_SS_DEFAULT_GUI, $WS_MAXIMIZEBOX, $WS_SIZEBOX))
 	GUISetOnEvent($GUI_EVENT_CLOSE, "On_Close") ; Run this function when the main GUI [X] is clicked
 
 	$hTab = GUICtrlCreateTab(5, 5, 592, 490)
@@ -50,6 +50,8 @@ Func fuMainGUI()
 	GUICtrlSetResizing($hDate, $GUI_DOCKMENUBAR)
 
 	$hExcelRemarksList = GUICtrlCreateListView("", 14, 80, 573, 350, BitOR($LVS_SHOWSELALWAYS, $LVS_REPORT, $LVS_NOSORTHEADER, $LVS_NOLABELWRAP))
+	GUIRegisterMsg($WM_NOTIFY, "WM_NOTIFY")
+
 	GUICtrlSetResizing($hExcelRemarksList, $GUI_DOCKBORDERS)
 	_GUICtrlListView_SetExtendedListViewStyle($hExcelRemarksList, BitOR($LVS_EX_FULLROWSELECT, $LVS_EX_GRIDLINES))
 	_GUICtrlListView_AddColumn($hExcelRemarksList, "")
@@ -66,7 +68,13 @@ Func fuMainGUI()
 	$hCreateAllCoversButton = GUICtrlCreateButton("CREATE ALL COVERS", 245, 465, 120, 22)
 	GUICtrlSetOnEvent(-1, "On_Click") ; Call a common button function
 	GUICtrlSetState($hCreateAllCoversButton, $GUI_DISABLE)
-;~ 	GUICtrlSetBkColor ($hCreateAllCoversButton, $COLOR_AQUA)
+	GUICtrlSetResizing($hCreateAllCoversButton, $GUI_DOCKSTATEBAR)
+	$hCreateSelectedCoversButton = GUICtrlCreateButton("CREATE SELECTED COVERS", 225, 435, 160, 22)
+	GUICtrlSetOnEvent(-1, "On_Click") ; Call a common button function
+	GUICtrlSetState($hCreateSelectedCoversButton, $GUI_DISABLE)
+	GUICtrlSetResizing($hCreateSelectedCoversButton, $GUI_DOCKSTATEBAR)
+
+
 	; tab 1
 	GUICtrlCreateTabItem("Settings")
 
@@ -145,6 +153,9 @@ EndFunc   ;==>fuApplySettingsValue
 
 Func On_Click()
 	Switch @GUI_CtrlId ; See wich item sent a message
+		Case $hCreateSelectedCoversButton
+			Local $aAllRemarks = _GUICtrlListView_CreateArray($hExcelRemarksList, Default, False)
+			fuProduceAllCoverSheets($aAllRemarks)
 		Case $hChooseFileButton
 			Local $sFileOpenDialog = FileOpenDialog("Select Remarks Spreadsheet", $sExcelFileDir & "\", "Excel (*.xlsm;*.xls)", $FD_FILEMUSTEXIST + $FD_PATHMUSTEXIST, Default, $hGUI)
 			GUICtrlSetData ($hExcelFile, $sFileOpenDialog)
@@ -176,6 +187,7 @@ Func fuReadExcelDoc($sExcelDocPath = '')
 	Local $oWorkbook = _Excel_BookOpen($oExcel, $sExcelDocPath, True, False)
 	If @error Then
 		MsgBox($MB_SYSTEMMODAL, "Excel UDF: _Excel_BookOpen", "Error opening workbook '" & $sExcelDocPath & @CRLF & "@error = " & @error & ", @extended = " & @extended)
+		_Excel_BookClose($oWorkbook, False)
 		_Excel_Close($oExcel)
 		Return
 	EndIf
@@ -224,6 +236,7 @@ EndFunc
 ; Syntax ........: _GUICtrlListView_CreateArray($hListView[, $sDelimeter = '|'])
 ; Parameters ....: $hListView           - Control ID/Handle to the control
 ;                  $sDelimeter          - [optional] One or more characters to use as delimiters (case sensitive). Default is '|'.
+;				   $bAllItems			- [optional]
 ; Return values .: Success - The array returned is two-dimensional and is made up of the following:
 ;                                $aArray[0][0] = Number of rows
 ;                                $aArray[0][1] = Number of columns
@@ -239,8 +252,21 @@ EndFunc
 ; Remarks .......: GUICtrlListView.au3 should be included.
 ; Example .......: Yes
 ; ===============================================================================================================================
-Func _GUICtrlListView_CreateArray($hListView, $sDelimeter = '|')
-    Local $iColumnCount = _GUICtrlListView_GetColumnCount($hListView), $iDim = 0, $iItemCount = _GUICtrlListView_GetItemCount($hListView)
+Func _GUICtrlListView_CreateArray($hListView, $sDelimeter = '|', $bAllItems = True)
+    Local $iColumnCount = _GUICtrlListView_GetColumnCount($hListView), $iDim = 0, $iItemCount = 0
+	Local $aiListIndices[1]
+	$iItemCount = ($bAllItems) ? ( _GUICtrlListView_GetItemCount($hListView)) : (_GUICtrlListView_GetSelectedCount($hListView))
+	If $bAllItems Then
+		$aiListIndices[0] = $iItemCount
+		For $a = 0 To $iItemCount - 1
+			_ArrayAdd($aiListIndices, $a)
+		Next
+;~  		_ArrayDisplay($aiListIndices, "Indices Array")
+	Else
+		$aiListIndices = _GUICtrlListView_GetSelectedIndices($hListView, True)
+;~ 		_ArrayDisplay($aiListIndices, "Indices Array")
+	EndIf
+
     If $iColumnCount < 3 Then
         $iDim = 3 - $iColumnCount
     EndIf
@@ -255,16 +281,18 @@ Func _GUICtrlListView_CreateArray($hListView, $sDelimeter = '|')
     Next
     $aReturn[0][2] = StringTrimRight($aReturn[0][2], StringLen($sDelimeter))
 
-    For $i = 0 To $iItemCount - 1
+    For $i = 1 To $iItemCount
         For $j = 0 To $iColumnCount - 1
-            $aReturn[$i + 1][$j] = _GUICtrlListView_GetItemText($hListView, $i, $j)
+            $aReturn[$i][$j] = _GUICtrlListView_GetItemText($hListView, $aiListIndices[$i], $j)
         Next
     Next
+;~ 	_ArrayDisplay($aReturn, "ListView Array")
     Return SetError(Number($aReturn[0][0] = 0), 0, $aReturn)
 EndFunc   ;==>_GUICtrlListView_CreateArray
 
 Func fuProduceAllCoverSheets($aRemarks = '')
 	If Not IsArray($aRemarks) Or $aRemarks[0][0] = 0 Then Return MsgBox($MB_ICONERROR, 'Error', 'ListView array is either empty or invalid!!!')
+	$aRemarks = fuRemoveMultiPartDuplicates($aRemarks)
 	Local $asNameState[2]
 	Local $cDay = GUICtrlRead($hDate)
 	Local $aDateTime = StringRegExp($cDay, '(\w+)\s(\d+),\s(\d+)', $STR_REGEXPARRAYMATCH )
@@ -332,41 +360,117 @@ Func fuProduceAllCoverSheets($aRemarks = '')
 EndFunc
 
 Func fuExtractMemberName($sSalutNameState)
-	Local $sSalutations[0], $asNamesState[0]
+	Local $sSalutations[0], $asNamesState = StringSplit($sSalutNameState, ", ", $STR_ENTIRESPLIT), $asLastName[0]
 	Local $sSalutaion = "", $sNameString = "", $sStateString = "", $sLastName = ""
-	$asNamesState = StringSplit($sSalutNameState, ", ", $STR_ENTIRESPLIT)
-	If $asNamesState[0] = 3 Then
-		$sLastName = (StringStripWS($asNamesState[1], $STR_STRIPLEADING + $STR_STRIPTRAILING))
-		$sNameString = (StringStripWS($asNamesState[2], $STR_STRIPLEADING + $STR_STRIPTRAILING)) _
-				 & " " & (StringStripWS($asNamesState[1], $STR_STRIPLEADING + $STR_STRIPTRAILING))
-		$sStateString = StringStripWS(StringRegExp($asNamesState[3], "(?s)[^\(]*", $STR_REGEXPARRAYMATCH)[0], $STR_STRIPLEADING + $STR_STRIPTRAILING)
-		$sSalutations = StringRegExp($asNamesState[3], "(?s)\((.*)\)", $STR_REGEXPARRAYMATCH)
+	Local $oRangeFound, $oRangeText, $oWord = _Word_Create(False, Default)
+;~ 	$asNamesState =
+	If @error Then Exit MsgBox($MB_ICONERROR, "createWordDoc: _Word_Create House Members", "Error creating a new Word instance." & _
+			@CRLF & "@error = " & @error & ", @extended = " & @extended)
+	Local $sDocument = "\\alpha3\MARKUP\SenateHouseMembers\House.Doc"
+	Local $oWordDoc = _Word_DocOpen($oWord, $sDocument, Default, Default, True)
+	If @error Then Exit MsgBox($MB_SYSTEMMODAL, "Word UDF: _Word_DocOpen Example 1", "Error opening " & $sDocument & _
+			@CRLF & "@error = " & @error & ", @extended = " & @extended)
+	$oRangeFound = _Word_DocFind($oWordDoc, $sSalutNameState, 0)
+	If @error <> 0 Then
+		MsgBox($MB_SYSTEMMODAL, "Word UDF: _Word_DocFind in House.doc Names.", "Error finding text in the document: " & $sSalutNameState & _
+			@CRLF & "@error = " & @error & ", @extended = " & @extended)
+		$sLastName = StringStripWS($asNamesState[1], $STR_STRIPLEADING + $STR_STRIPTRAILING)
+	Else
+		$oRangeText = _Word_DocRangeSet($oWordDoc, $oRangeFound, Default, Default, $wdParagraph, 1)
+		$asLastName = StringRegExp($oRangeText.Text, "(?s)•\s([]\w\s]+)\(*", $STR_REGEXPARRAYMATCH)
 		If @error == 1 Then
-			$sSalutation = "Mr."
+			$sLastName = StringStripWS($asNamesState[1], $STR_STRIPLEADING + $STR_STRIPTRAILING)
 		ElseIf @error == 2 Then
 			Exit MsgBox($MB_SYSTEMMODAL, "RegExp: StringStripWS Mr. (Mrs./Ms.)", _
 				"Error replacing text in the document. RegExp: StringStripWS Mr. (Mrs./Ms.)" & @CRLF & "@error = " & @error & ", @extended = " & @extended)
 		Else
-			$sSalutation = $sSalutations[0]
+			$sLastName = StringStripWS($asLastName[0], $STR_STRIPLEADING + $STR_STRIPTRAILING)
 		EndIf
+;~ 		MsgBox($MB_SYSTEMMODAL, "Member Names", $sLastName)
+	EndIf
+	_Word_DocClose($oWordDoc)
+	_Word_Quit($oWord)
+	$sSalutations = StringRegExp($asNamesState[3], "(?s)\((.*)\)", $STR_REGEXPARRAYMATCH  )
+	If @error == 1 Then
+		$sSalutation = "Mr."
+	ElseIf @error == 2 Then
+		Exit MsgBox($MB_SYSTEMMODAL, "RegExp: StringStripWS Mr. (Mrs./Ms.)", _
+			"Error replacing text in the document. RegExp: StringStripWS Mr. (Mrs./Ms.)" & @CRLF & "@error = " & @error & ", @extended = " & @extended)
+	Else
+		$sSalutation = $sSalutations[0]
+	EndIf
+	If $asNamesState[0] = 3 Then
+;~ 		$sLastName = (StringStripWS($asNamesState[1], $STR_STRIPLEADING + $STR_STRIPTRAILING))
+		$sNameString = (StringStripWS($asNamesState[2], $STR_STRIPLEADING + $STR_STRIPTRAILING)) _
+				 & " " & (StringStripWS($asNamesState[1], $STR_STRIPLEADING + $STR_STRIPTRAILING))
+		$sStateString = StringStripWS(StringRegExp($asNamesState[3], "(?s)[^\(]*", $STR_REGEXPARRAYMATCH)[0], $STR_STRIPLEADING + $STR_STRIPTRAILING)
+;~ 		$sSalutations = StringRegExp($asNamesState[3], "(?s)\((.*)\)", $STR_REGEXPARRAYMATCH)
+;~ 		If @error == 1 Then
+;~ 			$sSalutation = "Mr."
+;~ 		ElseIf @error == 2 Then
+;~ 			Exit MsgBox($MB_SYSTEMMODAL, "RegExp: StringStripWS Mr. (Mrs./Ms.)", _
+;~ 				"Error replacing text in the document. RegExp: StringStripWS Mr. (Mrs./Ms.)" & @CRLF & "@error = " & @error & ", @extended = " & @extended)
+;~ 		Else
+;~ 			$sSalutation = $sSalutations[0]
+;~ 		EndIf
 	ElseIf $asNamesState[0] = 4 Then
-		$sLastName = (StringStripWS($asNamesState[1], $STR_STRIPLEADING + $STR_STRIPTRAILING))
+;~ 		$sLastName = (StringStripWS($asNamesState[1], $STR_STRIPLEADING + $STR_STRIPTRAILING))
 		$sNameString = (StringStripWS($asNamesState[2], $STR_STRIPLEADING + $STR_STRIPTRAILING)) _
 				 & " " & (StringStripWS($asNamesState[1], $STR_STRIPLEADING + $STR_STRIPTRAILING)) & ", " _
 				 & (StringStripWS($asNamesState[3], $STR_STRIPLEADING + $STR_STRIPTRAILING))
 		$sStateString = StringStripWS(StringRegExp($asNamesState[4], "(?s)[^\(]*", $STR_REGEXPARRAYMATCH)[0], $STR_STRIPLEADING + $STR_STRIPTRAILING)
-		$sSalutations = StringRegExp($asNamesState[3], "(?s)\((.*)\)", $STR_REGEXPARRAYMATCH  )
-		If @error == 1 Then
-			$sSalutation = "Mr."
-		ElseIf @error == 2 Then
-			Exit MsgBox($MB_SYSTEMMODAL, "RegExp: StringStripWS Mr. (Mrs./Ms.)", _
-				"Error replacing text in the document. RegExp: StringStripWS Mr. (Mrs./Ms.)" & @CRLF & "@error = " & @error & ", @extended = " & @extended)
-		Else
-			$sSalutation = $sSalutations[0]
-		EndIf
+;~ 		$sSalutations = StringRegExp($asNamesState[3], "(?s)\((.*)\)", $STR_REGEXPARRAYMATCH  )
+;~ 		If @error == 1 Then
+;~ 			$sSalutation = "Mr."
+;~ 		ElseIf @error == 2 Then
+;~ 			Exit MsgBox($MB_SYSTEMMODAL, "RegExp: StringStripWS Mr. (Mrs./Ms.)", _
+;~ 				"Error replacing text in the document. RegExp: StringStripWS Mr. (Mrs./Ms.)" & @CRLF & "@error = " & @error & ", @extended = " & @extended)
+;~ 		Else
+;~ 			$sSalutation = $sSalutations[0]
+;~ 		EndIf
 	EndIf
 
 	Local $asNameState[4] = [$sNameString, $sStateString, $sSalutation, $sLastName]
 ;~ 	_ArrayDisplay($asNameState, "Salutation, Name, and State Array")
 	Return $asNameState
 EndFunc
+
+Func fuRemoveMultiPartDuplicates($asRemarks)
+	Local $asMultiPartRemarks[0]
+	For $iRemarkRec = 1 to $asRemarks[0][0] - 1
+		If $asRemarks[$iRemarkRec][9] <> "" Then
+			If _ArraySearch($asMultiPartRemarks, $asRemarks[$iRemarkRec][9]) <> -1 Then
+				_ArrayDelete($asRemarks, $iRemarkRec)
+				If @error Then Exit MsgBox($MB_SYSTEMMODAL, "MultiPartDedupe: _ArrayDelete", _
+					"Error deleting multi part duplicate from array" & @CRLF & "@error = " & @error & ", @extended = " & @extended)
+				$asRemarks[0][0] -= 1
+			Else
+				_ArrayAdd($asMultiPartRemarks, $asRemarks[$iRemarkRec][9])
+				If @error Then Exit MsgBox($MB_SYSTEMMODAL, "MultiPartDedupe: _ArrayAdd", _
+					"Error adding multi part duplicate to array" & @CRLF & "@error = " & @error & ", @extended = " & @extended)
+			EndIf
+		EndIf
+
+	Next
+	Return $asRemarks
+EndFunc
+
+Func WM_NOTIFY($hWnd, $iMsg, $iwParam, $ilParam)
+    #forceref $hWnd, $iMsg, $iwParam
+    Local $hWndFrom, $iIDFrom, $iCode, $tNMHDR, $hWndListView, $tInfo
+    $hWndListView = $hExcelRemarksList
+    If Not IsHWnd($hExcelRemarksList) Then $hWndListView = GUICtrlGetHandle($hExcelRemarksList)
+
+    $tNMHDR = DllStructCreate($tagNMHDR, $ilParam)
+    $hWndFrom = HWnd(DllStructGetData($tNMHDR, "hWndFrom"))
+    $iIDFrom = DllStructGetData($tNMHDR, "IDFrom")
+    $iCode = DllStructGetData($tNMHDR, "Code")
+    Switch $hWndFrom
+        Case $hWndListView
+            Switch $iCode
+                Case $NM_CLICK ; Sent by a list-view control when the user clicks an item with the left mouse button
+					GUICtrlSetState($hCreateSelectedCoversButton, $GUI_ENABLE)
+            EndSwitch
+    EndSwitch
+    Return $GUI_RUNDEFMSG
+EndFunc   ;==>WM_NOTIFY
