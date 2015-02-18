@@ -15,18 +15,20 @@ Opt("GUIOnEventMode", 1)
 Global $sExcelFileDirDefault = "\\alpha3\MARKUP\Remarks_Input"
 Global $sRegRemarksFileDefault = @ScriptDir & "\Cover Sheet Template for Regular Remarks.docx"
 Global $sRegSpeechFileDefault = @ScriptDir & "\Cover Sheet Template for Regular Speeches.docx"
+Global $sHouseDocFileDefault = "\\alpha3\MARKUP\SenateHouseMembers\House.Doc"
 
-Global $sExcelFileDir, $sRegRemarksFile, $sRegSpeechFile
+Global $sExcelFileDir, $sRegRemarksFile, $sRegSpeechFile, $sHouseDocFile
 
 Dim $hGUI, $hTab, $hExcelFolder, $hExcelFile, $hExcelFileLabel, $hDefault_Button, $hApply_Button, $hChooseFileButton, $hExcelRemarksList, _
-	$hCreateAllCoversButton, $hCreateSelectedCoversButton, $hDateLabel, $hDate, $hRegRemarksFile, $hRegSpeechFile
+	$hCreateAllCoversButton, $hCreateSelectedCoversButton, $hCreateAllRecordsTrackingSheet, $hCreateSelectedTrackingSheet, $hDateLabel, _
+	$hDate, $hRegRemarksFile, $hRegSpeechFile, $hCreateAllProofingSheet, $hCreateSelectedProofingSheet, $hHouseDocFile
 
 fuMainGUI()
 
 ; create GUI and tabs
 Func fuMainGUI()
 
-	$hGUI = GUICreate("Congressional Record Remarks v0.9.1.1", 600, 500, Default, Default,  BitOR($GUI_SS_DEFAULT_GUI, $WS_MAXIMIZEBOX, $WS_SIZEBOX))
+	$hGUI = GUICreate("Congressional Record Remarks v1.0", 600, 500, Default, Default,  BitOR($GUI_SS_DEFAULT_GUI, $WS_MAXIMIZEBOX, $WS_SIZEBOX))
 	GUISetOnEvent($GUI_EVENT_CLOSE, "On_Close") ; Run this function when the main GUI [X] is clicked
 
 	$hTab = GUICtrlCreateTab(5, 5, 592, 490)
@@ -35,12 +37,13 @@ Func fuMainGUI()
 	GUICtrlCreateTabItem("Main")
 
 	$hExcelFileLabel = GUICtrlCreateLabel("Remarks Spreadsheet:", 14, 37)
-	$hExcelFile = GUICtrlCreateInput("", 134, 35, 360, 20)
+	$hExcelFile = GUICtrlCreateInput("", 134, 35, 360, 20, $ES_READONLY)
+	GUICtrlSetBkColor($hExcelFile, 0xFFFFFF)
 	$hChooseFileButton = GUICtrlCreateButton("CHOOSE", 515, 35, 70, 20)
 	GUICtrlSetOnEvent(-1, "On_Click") ; Call a common button function
 	$hDateLabel = GUICtrlCreateLabel("Date:", 14, 57)
 	GUISetFont(10, $FW_BOLD)
-	$hDate = GUICtrlCreateLabel("", 134, 57, 140, 22, $SS_SUNKEN)
+	$hDate = GUICtrlCreateLabel("", 134, 57, 140, 22)
 	GUISetFont(8.5, $FW_NORMAL)
 
 	GUICtrlSetResizing($hExcelFileLabel, $GUI_DOCKMENUBAR)
@@ -50,6 +53,7 @@ Func fuMainGUI()
 	GUICtrlSetResizing($hDate, $GUI_DOCKMENUBAR)
 
 	$hExcelRemarksList = GUICtrlCreateListView("", 14, 80, 573, 350, BitOR($LVS_SHOWSELALWAYS, $LVS_REPORT, $LVS_NOSORTHEADER, $LVS_NOLABELWRAP))
+	GUICtrlSetState($hExcelRemarksList, $GUI_DISABLE)
 	GUIRegisterMsg($WM_NOTIFY, "WM_NOTIFY")
 
 	GUICtrlSetResizing($hExcelRemarksList, $GUI_DOCKBORDERS)
@@ -65,15 +69,34 @@ Func fuMainGUI()
 	_GUICtrlListView_AddColumn($hExcelRemarksList, "MADAM")
 	_GUICtrlListView_AddColumn($hExcelRemarksList, "REMARK")
 
-	$hCreateAllCoversButton = GUICtrlCreateButton("CREATE ALL COVERS", 245, 465, 120, 22)
+	$hCreateAllCoversButton = GUICtrlCreateButton("ALL COVERS", 243, 465, 120, 22)
 	GUICtrlSetOnEvent(-1, "On_Click") ; Call a common button function
 	GUICtrlSetState($hCreateAllCoversButton, $GUI_DISABLE)
 	GUICtrlSetResizing($hCreateAllCoversButton, $GUI_DOCKSTATEBAR)
-	$hCreateSelectedCoversButton = GUICtrlCreateButton("CREATE SELECTED COVERS", 225, 435, 160, 22)
+	$hCreateSelectedCoversButton = GUICtrlCreateButton("SELECTED COVERS", 243, 435, 120, 22)
 	GUICtrlSetOnEvent(-1, "On_Click") ; Call a common button function
 	GUICtrlSetState($hCreateSelectedCoversButton, $GUI_DISABLE)
 	GUICtrlSetResizing($hCreateSelectedCoversButton, $GUI_DOCKSTATEBAR)
 
+	$hCreateAllRecordsTrackingSheet = GUICtrlCreateButton("ALL REMARKS TRACKING SHEET", 14, 465, 220, 22)
+	GUICtrlSetOnEvent(-1, "On_Click") ; Call a common button function
+	GUICtrlSetState($hCreateAllRecordsTrackingSheet, $GUI_DISABLE)
+	GUICtrlSetResizing($hCreateAllRecordsTrackingSheet, $GUI_DOCKSTATEBAR)
+
+	$hCreateSelectedTrackingSheet = GUICtrlCreateButton("SELECTED REMARKS TRACKING SHEET", 14, 435, 220, 22)
+	GUICtrlSetOnEvent(-1, "On_Click") ; Call a common button function
+	GUICtrlSetState($hCreateSelectedTrackingSheet, $GUI_DISABLE)
+	GUICtrlSetResizing($hCreateSelectedTrackingSheet, $GUI_DOCKSTATEBAR)
+
+	$hCreateAllProofingSheet = GUICtrlCreateButton("ALL REMARKS PROOFING SHEET", 370, 465, 219, 22)
+	GUICtrlSetOnEvent(-1, "On_Click") ; Call a common button function
+	GUICtrlSetState($hCreateAllProofingSheet, $GUI_DISABLE)
+	GUICtrlSetResizing($hCreateAllProofingSheet, $GUI_DOCKSTATEBAR)
+
+	$hCreateSelectedProofingSheet = GUICtrlCreateButton("SELECTED REMARKS PROOFING SHEET", 370, 435, 219, 22)
+	GUICtrlSetOnEvent(-1, "On_Click") ; Call a common button function
+	GUICtrlSetState($hCreateSelectedProofingSheet, $GUI_DISABLE)
+	GUICtrlSetResizing($hCreateSelectedProofingSheet, $GUI_DOCKSTATEBAR)
 
 	; tab 1
 	GUICtrlCreateTabItem("Settings")
@@ -98,6 +121,13 @@ Func fuMainGUI()
 	GUICtrlSetResizing(-1, $GUI_DOCKMENUBAR)
 	$sRegSpeechFile = fuGetRegValsForSettings("regspeeches", $sRegSpeechFileDefault)
 	GUICtrlSetData($hRegSpeechFile, $sRegSpeechFile)
+
+	GUICtrlCreateLabel("Location of House Members' File", 35, 225)
+	GUICtrlSetResizing(-1, $GUI_DOCKMENUBAR)
+	$hHouseDocFile = GUICtrlCreateInput("", 35, 245, 320, 20)
+	GUICtrlSetResizing(-1, $GUI_DOCKMENUBAR)
+	$sHouseDocFile = fuGetRegValsForSettings("housedoc", $sHouseDocFileDefault)
+	GUICtrlSetData($hHouseDocFile, $sHouseDocFile)
 
 	$hDefault_Button = GUICtrlCreateButton("Default", 400, 225, 75)
 	GUICtrlSetOnEvent(-1, "On_Click") ; Call a common button function
@@ -153,18 +183,28 @@ EndFunc   ;==>fuApplySettingsValue
 
 Func On_Click()
 	Switch @GUI_CtrlId ; See wich item sent a message
+		Case $hCreateSelectedProofingSheet
+			Local $aAllRemarks = _GUICtrlListView_CreateArray($hExcelRemarksList, Default, False)
+			If $aAllRemarks[0][0] > 0 Then fuCreateProofingSheet($aAllRemarks)
+		Case $hCreateAllProofingSheet
+			Local $aAllRemarks = _GUICtrlListView_CreateArray($hExcelRemarksList)
+			fuCreateProofingSheet($aAllRemarks)
+		Case $hCreateSelectedTrackingSheet
+			Local $aAllRemarks = _GUICtrlListView_CreateArray($hExcelRemarksList, Default, False)
+			If $aAllRemarks[0][0] > 0 Then fuCreateTrackingSheet($aAllRemarks)
+		Case $hCreateAllRecordsTrackingSheet
+			Local $aAllRemarks = _GUICtrlListView_CreateArray($hExcelRemarksList)
+			fuCreateTrackingSheet($aAllRemarks)
 		Case $hCreateSelectedCoversButton
 			Local $aAllRemarks = _GUICtrlListView_CreateArray($hExcelRemarksList, Default, False)
-			fuProduceAllCoverSheets($aAllRemarks)
+			If $aAllRemarks[0][0] > 0 Then fuProduceAllCoverSheets($aAllRemarks)
 		Case $hChooseFileButton
 			Local $sFileOpenDialog = FileOpenDialog("Select Remarks Spreadsheet", $sExcelFileDir & "\", "Excel (*.xlsm;*.xls)", $FD_FILEMUSTEXIST + $FD_PATHMUSTEXIST, Default, $hGUI)
 			GUICtrlSetData ($hExcelFile, $sFileOpenDialog)
 			Local $aExcelData = fuReadExcelDoc($sFileOpenDialog)
-;~ 			_ArrayDisplay($aExcelData, "Excel File Data")
 			If IsArray($aExcelData) Then fuPopulateListView($aExcelData)
 		Case $hCreateAllCoversButton
 			Local $aAllRemarks = _GUICtrlListView_CreateArray($hExcelRemarksList)
-;~ 			_ArrayDisplay($aAllRemarks, "All Remarks in ListView")
 			fuProduceAllCoverSheets($aAllRemarks)
 		Case $hDefault_Button
 			$sExcelFileDir = $sExcelFileDirDefault
@@ -173,11 +213,14 @@ Func On_Click()
 			GUICtrlSetData($hRegRemarksFile, $sRegRemarksFile)
 			$sRegSpeechFile = $sRegSpeechFileDefault
 			GUICtrlSetData($hRegSpeechFile, $sRegSpeechFile)
+			$sHouseDocFile = $sHouseDocFileDefault
+			GUICtrlSetData($hHouseDocFile, $sHouseDocFile)
 			ContinueCase
 		Case $hApply_Button
 			fuApplySettingsValue($hExcelFolder, "excel")
 			fuApplySettingsValue($hRegRemarksFile, "regremarks")
 			fuApplySettingsValue($hRegSpeechFile, "regspeeches")
+			fuApplySettingsValue($hHouseDocFile, "housedoc")
 	EndSwitch
 EndFunc   ;==>On_Click
 
@@ -226,7 +269,11 @@ Func fuPopulateListView($aListViewData = '')
 	GUICtrlSendMsg($hExcelRemarksList, $LVM_SETCOLUMNWIDTH, 6, $LVSCW_AUTOSIZE_USEHEADER)
 	GUICtrlSendMsg($hExcelRemarksList, $LVM_SETCOLUMNWIDTH, 7, $LVSCW_AUTOSIZE_USEHEADER)
 	GUICtrlSendMsg($hExcelRemarksList, $LVM_SETCOLUMNWIDTH, 8, $LVSCW_AUTOSIZE_USEHEADER)
+	GUICtrlSetState($hExcelRemarksList, $GUI_ENABLE)
 	GUICtrlSetState($hCreateAllCoversButton, $GUI_ENABLE)
+	GUICtrlSetState($hCreateAllRecordsTrackingSheet, $GUI_ENABLE)
+	GUICtrlSetState($hCreateAllProofingSheet, $GUI_ENABLE)
+	GUISetState(@SW_MAXIMIZE, $hGUI)
 	Return
 EndFunc
 
@@ -248,9 +295,8 @@ EndFunc
 ;                                $aArray[n][0] = nth row, 1st column
 ;                                $aArray[n][1] = nth row, 2nd column
 ;                                $aArray[n][2] = nth row, 3rd column
-; Author ........: guinness
+; Author ........: guinness, sjohnson
 ; Remarks .......: GUICtrlListView.au3 should be included.
-; Example .......: Yes
 ; ===============================================================================================================================
 Func _GUICtrlListView_CreateArray($hListView, $sDelimeter = '|', $bAllItems = True)
     Local $iColumnCount = _GUICtrlListView_GetColumnCount($hListView), $iDim = 0, $iItemCount = 0
@@ -363,12 +409,10 @@ Func fuExtractMemberName($sSalutNameState)
 	Local $sSalutations[0], $asNamesState = StringSplit($sSalutNameState, ", ", $STR_ENTIRESPLIT), $asLastName[0]
 	Local $sSalutaion = "", $sNameString = "", $sStateString = "", $sLastName = ""
 	Local $oRangeFound, $oRangeText, $oWord = _Word_Create(False, Default)
-;~ 	$asNamesState =
 	If @error Then Exit MsgBox($MB_ICONERROR, "createWordDoc: _Word_Create House Members", "Error creating a new Word instance." & _
 			@CRLF & "@error = " & @error & ", @extended = " & @extended)
-	Local $sDocument = "\\alpha3\MARKUP\SenateHouseMembers\House.Doc"
-	Local $oWordDoc = _Word_DocOpen($oWord, $sDocument, Default, Default, True)
-	If @error Then Exit MsgBox($MB_SYSTEMMODAL, "Word UDF: _Word_DocOpen Example 1", "Error opening " & $sDocument & _
+	Local $oWordDoc = _Word_DocOpen($oWord, $sHouseDocFile, Default, Default, True)
+	If @error Then Exit MsgBox($MB_SYSTEMMODAL, "Word UDF: _Word_DocOpen House Members File", "Error opening " & $sHouseDocFile & _
 			@CRLF & "@error = " & @error & ", @extended = " & @extended)
 	$oRangeFound = _Word_DocFind($oWordDoc, $sSalutNameState, 0)
 	If @error <> 0 Then
@@ -386,7 +430,6 @@ Func fuExtractMemberName($sSalutNameState)
 		Else
 			$sLastName = StringStripWS($asLastName[0], $STR_STRIPLEADING + $STR_STRIPTRAILING)
 		EndIf
-;~ 		MsgBox($MB_SYSTEMMODAL, "Member Names", $sLastName)
 	EndIf
 	_Word_DocClose($oWordDoc)
 	_Word_Quit($oWord)
@@ -400,38 +443,17 @@ Func fuExtractMemberName($sSalutNameState)
 		$sSalutation = $sSalutations[0]
 	EndIf
 	If $asNamesState[0] = 3 Then
-;~ 		$sLastName = (StringStripWS($asNamesState[1], $STR_STRIPLEADING + $STR_STRIPTRAILING))
 		$sNameString = (StringStripWS($asNamesState[2], $STR_STRIPLEADING + $STR_STRIPTRAILING)) _
 				 & " " & (StringStripWS($asNamesState[1], $STR_STRIPLEADING + $STR_STRIPTRAILING))
 		$sStateString = StringStripWS(StringRegExp($asNamesState[3], "(?s)[^\(]*", $STR_REGEXPARRAYMATCH)[0], $STR_STRIPLEADING + $STR_STRIPTRAILING)
-;~ 		$sSalutations = StringRegExp($asNamesState[3], "(?s)\((.*)\)", $STR_REGEXPARRAYMATCH)
-;~ 		If @error == 1 Then
-;~ 			$sSalutation = "Mr."
-;~ 		ElseIf @error == 2 Then
-;~ 			Exit MsgBox($MB_SYSTEMMODAL, "RegExp: StringStripWS Mr. (Mrs./Ms.)", _
-;~ 				"Error replacing text in the document. RegExp: StringStripWS Mr. (Mrs./Ms.)" & @CRLF & "@error = " & @error & ", @extended = " & @extended)
-;~ 		Else
-;~ 			$sSalutation = $sSalutations[0]
-;~ 		EndIf
 	ElseIf $asNamesState[0] = 4 Then
-;~ 		$sLastName = (StringStripWS($asNamesState[1], $STR_STRIPLEADING + $STR_STRIPTRAILING))
 		$sNameString = (StringStripWS($asNamesState[2], $STR_STRIPLEADING + $STR_STRIPTRAILING)) _
 				 & " " & (StringStripWS($asNamesState[1], $STR_STRIPLEADING + $STR_STRIPTRAILING)) & ", " _
 				 & (StringStripWS($asNamesState[3], $STR_STRIPLEADING + $STR_STRIPTRAILING))
 		$sStateString = StringStripWS(StringRegExp($asNamesState[4], "(?s)[^\(]*", $STR_REGEXPARRAYMATCH)[0], $STR_STRIPLEADING + $STR_STRIPTRAILING)
-;~ 		$sSalutations = StringRegExp($asNamesState[3], "(?s)\((.*)\)", $STR_REGEXPARRAYMATCH  )
-;~ 		If @error == 1 Then
-;~ 			$sSalutation = "Mr."
-;~ 		ElseIf @error == 2 Then
-;~ 			Exit MsgBox($MB_SYSTEMMODAL, "RegExp: StringStripWS Mr. (Mrs./Ms.)", _
-;~ 				"Error replacing text in the document. RegExp: StringStripWS Mr. (Mrs./Ms.)" & @CRLF & "@error = " & @error & ", @extended = " & @extended)
-;~ 		Else
-;~ 			$sSalutation = $sSalutations[0]
-;~ 		EndIf
 	EndIf
 
 	Local $asNameState[4] = [$sNameString, $sStateString, $sSalutation, $sLastName]
-;~ 	_ArrayDisplay($asNameState, "Salutation, Name, and State Array")
 	Return $asNameState
 EndFunc
 
@@ -470,7 +492,142 @@ Func WM_NOTIFY($hWnd, $iMsg, $iwParam, $ilParam)
             Switch $iCode
                 Case $NM_CLICK ; Sent by a list-view control when the user clicks an item with the left mouse button
 					GUICtrlSetState($hCreateSelectedCoversButton, $GUI_ENABLE)
+					GUICtrlSetState($hCreateSelectedTrackingSheet, $GUI_ENABLE)
+					GUICtrlSetState($hCreateSelectedProofingSheet, $GUI_ENABLE)
             EndSwitch
     EndSwitch
     Return $GUI_RUNDEFMSG
 EndFunc   ;==>WM_NOTIFY
+
+Func fuCreateTrackingSheet($aRemarks)
+	If Not IsArray($aRemarks) Or $aRemarks[0][0] = 0 Then Return MsgBox($MB_ICONERROR, 'Error', 'ListView array is either empty or invalid!!!')
+	Local $cDay = GUICtrlRead($hDate)
+
+	; Create application object and create a new workbook
+	Local $oAppl = _Excel_Open()
+	If @error Then Exit MsgBox($MB_SYSTEMMODAL, "Excel UDF: _Excel_RangeWrite Example", "Error creating the Excel application object." & @CRLF & "@error = " & @error & ", @extended = " & @extended)
+	Local $oWorkbook = _Excel_BookNew($oAppl)
+	If @error Then
+		MsgBox($MB_SYSTEMMODAL, "Excel UDF: _Excel_RangeWrite Example", "Error creating the new workbook." & @CRLF & "@error = " & @error & ", @extended = " & @extended)
+		_Excel_Close($oAppl)
+		Exit
+	EndIf
+	_ArrayDelete($aRemarks, 0)
+	_ArrayDeleteCol($aRemarks, UBound($aRemarks, 2) - 1)
+	_ArrayDeleteCol($aRemarks, UBound($aRemarks, 2) - 1)
+	_ArrayDeleteCol($aRemarks, UBound($aRemarks, 2) - 1)
+	$oAppl.ActiveSheet.Columns("A:A").ColumnWidth = 1
+	$oAppl.ActiveSheet.Columns("B:B").ColumnWidth = 9
+	$oAppl.ActiveSheet.Columns("C:C").ColumnWidth = 5
+	$oAppl.ActiveSheet.Columns("D:D").ColumnWidth = 7
+	$oAppl.ActiveSheet.Columns("E:E").ColumnWidth = 41
+	$oAppl.ActiveSheet.Columns("F:F").ColumnWidth = 20
+	$oAppl.ActiveSheet.Columns("G:G").ColumnWidth = 1
+	$oAppl.ActiveSheet.Columns("H:H").ColumnWidth = 5
+	$oAppl.ActiveSheet.Columns("I:I").ColumnWidth = 5
+	$oAppl.ActiveSheet.Range("A:I").WrapText = True
+	$oAppl.ActiveSheet.Range("A:I").VerticalAlignment = -4108
+	$oAppl.ActiveSheet.Range("B:D").HorizontalAlignment = -4108
+	$oAppl.ActiveSheet.Range("E1:F2").HorizontalAlignment = -4108
+	$oAppl.ActiveSheet.Range("A:I").NumberFormat = "@"
+	With $oAppl.ActiveSheet.Range("A3:I" & UBound($aRemarks) + 3)
+		.Borders.LineStyle = 1
+	EndWith
+	With $oAppl.ActiveSheet.Range("A1:I2")
+		.Borders(9).LineStyle = 1
+		.Borders(8).LineStyle = 1
+		.Borders(7).LineStyle = 1
+		.Borders(10).LineStyle = 1
+	EndWith
+	$oAppl.ActiveSheet.Range("A3:F3, H3:I3").HorizontalAlignment = -4108
+	With $oAppl.ActiveSheet.Range("E2").Font
+		.Size = 26
+		.Bold = True
+	EndWith
+	With $oAppl.ActiveSheet.Range("F2:I2")
+		.Merge
+		.Font.Size = 14
+	EndWith
+	With $oAppl.ActiveSheet.Range("A3:I3")
+		.Font.Size = 9
+		.Font.Bold = True
+		.Interior.ColorIndex = 15
+	EndWith
+
+	Local $aHeadings[1][9] = [["", "EXTENSION NUMBER", "PAGE SPAN", "MARKUP PERSON INITIALS", "AUTHOR / HOUSE MEMBER", "COMMENTS", "SPEECH", "OPER-ATOR", "TIME OUT"]]
+	_Excel_RangeWrite($oWorkbook, $oWorkbook.Activesheet, $aHeadings, "A3")
+	If @error Then Exit MsgBox($MB_SYSTEMMODAL, "Excel UDF: _Excel_RangeWrite Headigsh", "Error writing Headings to worksheet." & @CRLF & "@error = " & @error & ", @extended = " & @extended)
+	_Excel_RangeWrite($oWorkbook, $oWorkbook.Activesheet,  "Congressional Record", "E1")
+	If @error Then Exit MsgBox($MB_SYSTEMMODAL, "Excel UDF: _Excel_RangeWrite Congressional Record", "Error writing 'Congressional Record' to worksheet." & @CRLF & "@error = " & @error & ", @extended = " & @extended)
+	_Excel_RangeWrite($oWorkbook, $oWorkbook.Activesheet,  "REMARKS", "E2")
+	If @error Then Exit MsgBox($MB_SYSTEMMODAL, "Excel UDF: _Excel_RangeWrite REMARKS", "Error writing 'REMARKS' to worksheet." & @CRLF & "@error = " & @error & ", @extended = " & @extended)
+	_Excel_RangeWrite($oWorkbook, $oWorkbook.Activesheet,  $cDay, "F2")
+	If @error Then Exit MsgBox($MB_SYSTEMMODAL, "Excel UDF: _Excel_RangeWrite Date", "Error writing Date to worksheet." & @CRLF & "@error = " & @error & ", @extended = " & @extended)
+	_Excel_RangeWrite($oWorkbook, $oWorkbook.Activesheet, $aRemarks, "A4", Default, True)
+	If @error Then Exit MsgBox($MB_SYSTEMMODAL, "Excel UDF: _Excel_RangeWrite Remarks", "Error writing Remarks to worksheet." & @CRLF & "@error = " & @error & ", @extended = " & @extended)
+
+	Return
+EndFunc
+
+Func _ArrayDeleteCol(ByRef $avWork, $iCol)
+    If Not IsArray($avWork) Then Return SetError(1, 0, 0); Not an array
+    If UBound($avWork, 0) <> 2 Then Return SetError(1, 1, 0); Not a 2D array
+    If ($iCol < 0) Or ($iCol > (UBound($avWork, 2) - 1)) Then Return SetError(1, 2, 0); $iCol out of range
+    If $iCol < UBound($avWork, 2) - 1 Then
+        For $c = $iCol To UBound($avWork, 2) - 2
+            For $r = 0 To UBound($avWork) - 1
+                $avWork[$r][$c] = $avWork[$r][$c + 1]
+            Next
+        Next
+    EndIf
+    ReDim $avWork[UBound($avWork)][UBound($avWork, 2) - 1]
+    Return 1
+EndFunc
+
+Func fuCreateProofingSheet($aRemarks)
+	If Not IsArray($aRemarks) Or $aRemarks[0][0] = 0 Then Return MsgBox($MB_ICONERROR, 'Error', 'ListView array is either empty or invalid!!!')
+
+	; Create application object and create a new workbook
+	Local $oAppl = _Excel_Open()
+	If @error Then Exit MsgBox($MB_SYSTEMMODAL, "Excel UDF: _Excel_RangeWrite Example", "Error creating the Excel application object." & @CRLF & "@error = " & @error & ", @extended = " & @extended)
+	Local $oWorkbook = _Excel_BookNew($oAppl)
+	If @error Then
+		MsgBox($MB_SYSTEMMODAL, "Excel UDF: _Excel_RangeWrite Example", "Error creating the new workbook." & @CRLF & "@error = " & @error & ", @extended = " & @extended)
+		_Excel_Close($oAppl)
+		Exit
+	EndIf
+	_ArrayDelete($aRemarks, 0)
+	For $i = 1 To 4
+		_ArrayDeleteCol($aRemarks, UBound($aRemarks, 2) - 2)
+	Next
+
+	_ArrayDeleteCol($aRemarks, 2)
+	_ArrayDeleteCol($aRemarks, 2)
+	$oAppl.ActiveSheet.Columns("A:A").ColumnWidth = 1
+	$oAppl.ActiveSheet.Columns("B:B").ColumnWidth = 9
+	$oAppl.ActiveSheet.Columns("C:C").ColumnWidth = 41
+	$oAppl.ActiveSheet.Columns("D:D").ColumnWidth = 51
+
+	With $oAppl.ActiveSheet.Range("A:D")
+		.WrapText = True
+		.VerticalAlignment = -4108
+		.NumberFormat = "@"
+	EndWith
+	$oAppl.ActiveSheet.Range("B:D").HorizontalAlignment = -4108
+	With $oAppl.ActiveSheet.Range("A1:D" & UBound($aRemarks) + 1)
+		.Borders.LineStyle = 1
+	EndWith
+	With $oAppl.ActiveSheet.Range("A1:D1")
+		.Font.Size = 9
+		.Font.Bold = True
+		.Interior.ColorIndex = 15
+	EndWith
+
+	Local $aHeadings[1][4] = [["", "EXTENSION NUMBER", "AUTHOR / HOUSE MEMBER", "REMARK TITLE"]]
+	_Excel_RangeWrite($oWorkbook, $oWorkbook.Activesheet, $aHeadings)
+	If @error Then Exit MsgBox($MB_SYSTEMMODAL, "Excel UDF: _Excel_RangeWrite Headigsh", "Error writing Headings to worksheet." & @CRLF & "@error = " & @error & ", @extended = " & @extended)
+	_Excel_RangeWrite($oWorkbook, $oWorkbook.Activesheet, $aRemarks, "A2", Default, True)
+	If @error Then Exit MsgBox($MB_SYSTEMMODAL, "Excel UDF: _Excel_RangeWrite Remarks", "Error writing Remarks to worksheet." & @CRLF & "@error = " & @error & ", @extended = " & @extended)
+
+	Return
+EndFunc
