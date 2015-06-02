@@ -1,3 +1,12 @@
+#Region ;**** Directives created by AutoIt3Wrapper_GUI ****
+#AutoIt3Wrapper_UseX64=n
+#AutoIt3Wrapper_Res_Description=Application Processing Congressional Remarks Spreadsheet
+#AutoIt3Wrapper_Res_Fileversion=1.1.0.2
+#AutoIt3Wrapper_Res_Fileversion_AutoIncrement=y
+#AutoIt3Wrapper_Res_LegalCopyright=U.S. GPO
+#AutoIt3Wrapper_Run_Tidy=y
+#AutoIt3Wrapper_Run_Au3Stripper=y
+#EndRegion ;**** Directives created by AutoIt3Wrapper_GUI ****
 #include <Word.au3>
 #include <Excel.au3>
 #include <Array.au3>
@@ -20,15 +29,15 @@ Global $sHouseDocFileDefault = "\\alpha3\MARKUP\SenateHouseMembers\House.Doc"
 Global $sExcelFileDir, $sRegRemarksFile, $sRegSpeechFile, $sHouseDocFile
 
 Dim $hGUI, $hTab, $hExcelFolder, $hExcelFile, $hExcelFileLabel, $hDefault_Button, $hApply_Button, $hChooseFileButton, $hExcelRemarksList, _
-	$hCreateAllCoversButton, $hCreateSelectedCoversButton, $hCreateAllRecordsTrackingSheet, $hCreateSelectedTrackingSheet, $hDateLabel, _
-	$hDate, $hRegRemarksFile, $hRegSpeechFile, $hCreateAllProofingSheet, $hCreateSelectedProofingSheet, $hHouseDocFile
+		$hCreateAllCoversButton, $hCreateSelectedCoversButton, $hCreateAllRecordsTrackingSheet, $hCreateSelectedTrackingSheet, $hDateLabel, _
+		$hDate, $hRegRemarksFile, $hRegSpeechFile, $hCreateAllProofingSheet, $hCreateSelectedProofingSheet, $hHouseDocFile
 
 fuMainGUI()
 
 ; create GUI and tabs
 Func fuMainGUI()
 
-	$hGUI = GUICreate("Congressional Record Remarks v1.0", 600, 500, Default, Default,  BitOR($GUI_SS_DEFAULT_GUI, $WS_MAXIMIZEBOX, $WS_SIZEBOX))
+	$hGUI = GUICreate("Congressional Record Remarks v1.1", 600, 500, Default, Default, BitOR($GUI_SS_DEFAULT_GUI, $WS_MAXIMIZEBOX, $WS_SIZEBOX))
 	GUISetOnEvent($GUI_EVENT_CLOSE, "On_Close") ; Run this function when the main GUI [X] is clicked
 
 	$hTab = GUICtrlCreateTab(5, 5, 592, 490)
@@ -61,7 +70,7 @@ Func fuMainGUI()
 	_GUICtrlListView_AddColumn($hExcelRemarksList, "")
 	_GUICtrlListView_AddColumn($hExcelRemarksList, "EXT")
 	_GUICtrlListView_AddColumn($hExcelRemarksList, "SPAN")
-	_GUICtrlListView_AddColumn($hExcelRemarksList, "INIT")
+;~ 	_GUICtrlListView_AddColumn($hExcelRemarksList, "INIT")
 	_GUICtrlListView_AddColumn($hExcelRemarksList, "AUTHOR")
 	_GUICtrlListView_AddColumn($hExcelRemarksList, "COMMENTS")
 	_GUICtrlListView_AddColumn($hExcelRemarksList, "SPCH")
@@ -143,7 +152,7 @@ Func fuMainGUI()
 	While 1
 		Sleep(10)
 	WEnd
-EndFunc
+EndFunc   ;==>fuMainGUI
 
 Func On_Close()
 	Switch @GUI_WinHandle ; See which GUI sent the CLOSE message
@@ -200,7 +209,7 @@ Func On_Click()
 			If $aAllRemarks[0][0] > 0 Then fuProduceAllCoverSheets($aAllRemarks)
 		Case $hChooseFileButton
 			Local $sFileOpenDialog = FileOpenDialog("Select Remarks Spreadsheet", $sExcelFileDir & "\", "Excel (*.xlsm;*.xls)", $FD_FILEMUSTEXIST + $FD_PATHMUSTEXIST, Default, $hGUI)
-			GUICtrlSetData ($hExcelFile, $sFileOpenDialog)
+			GUICtrlSetData($hExcelFile, $sFileOpenDialog)
 			Local $aExcelData = fuReadExcelDoc($sFileOpenDialog)
 			If IsArray($aExcelData) Then fuPopulateListView($aExcelData)
 		Case $hCreateAllCoversButton
@@ -234,48 +243,48 @@ Func fuReadExcelDoc($sExcelDocPath = '')
 		_Excel_Close($oExcel)
 		Return
 	EndIf
-	Local $result=_Excel_RangeRead($oWorkbook, Default, Default, Default, True)
+	Local $result = _Excel_RangeRead($oWorkbook, Default, Default, Default, True)
 	If @error Then Return MsgBox($MB_SYSTEMMODAL, "Excel UDF: _Excel_RangeRead", "Error reading from workbook." & @CRLF & "@error = " & @error & ", @extended = " & @extended)
 	_Excel_BookClose($oWorkbook, False)
 	_Excel_Close($oExcel)
 	Return $result
-EndFunc
+EndFunc   ;==>fuReadExcelDoc
 
 Func fuPopulateListView($aListViewData = '')
 	If Not IsArray($aListViewData) Then Return MsgBox($MB_ICONERROR, 'Error', 'Excel File Did Not Parse as an Array!!!')
-	GUICtrlSetData($hDate, $aListViewData[1][5])
+	GUICtrlSetData($hDate, $aListViewData[0][4])
 	Local $arrayLength = UBound($aListViewData)
 	_GUICtrlListView_DeleteAllItems($hExcelRemarksList)
-	For $i = 3 To $arrayLength - 1
-		If $aListViewData[$i][4] <> "" Then
+	For $i = 2 To $arrayLength - 1
+		If $aListViewData[$i][3] <> "" Then
+			If $aListViewData[$i][8] <> "" Then $aListViewData[$i][8] = 'X'
+			If $aListViewData[$i][5] <> "" Then $aListViewData[$i][5] = 'X'
 			If $aListViewData[$i][9] <> "" Then $aListViewData[$i][9] = 'X'
-			If $aListViewData[$i][6] <> "" Then $aListViewData[$i][6] = 'X'
-			If $aListViewData[$i][10] <> "" Then $aListViewData[$i][10] = 'X'
 			GUICtrlCreateListViewItem($aListViewData[$i][0] & "|" & StringFormat("%03d", $aListViewData[$i][1]) & "|" & $aListViewData[$i][2] & "|" & $aListViewData[$i][3] & "|" & $aListViewData[$i][4] _
-			& "|" & $aListViewData[$i][5] & "|" & $aListViewData[$i][6] & "|" & $aListViewData[$i][9] & "|" & $aListViewData[$i][10] & "|" & $aListViewData[$i][11], $hExcelRemarksList)
-			If $aListViewData[$i][0] <> "" Then GUICtrlSetBkColor( -1, $COLOR_AQUA )
-			If $aListViewData[$i][9] <> "" Then GUICtrlSetBkColor( -1, $COLOR_SILVER )
+					 & "|" & $aListViewData[$i][5] & "|" & $aListViewData[$i][8] & "|" & $aListViewData[$i][9] & "|" & $aListViewData[$i][10], $hExcelRemarksList)
+			If $aListViewData[$i][0] <> "" Then GUICtrlSetBkColor(-1, $COLOR_AQUA)
+			If $aListViewData[$i][8] <> "" Then GUICtrlSetBkColor(-1, $COLOR_SILVER)
 		EndIf
 	Next
 	; To resize to widest value
-	GUICtrlSendMsg($hExcelRemarksList, $LVM_SETCOLUMNWIDTH, 9, $LVSCW_AUTOSIZE)
-	GUICtrlSendMsg($hExcelRemarksList, $LVM_SETCOLUMNWIDTH, 5, $LVSCW_AUTOSIZE)
+	GUICtrlSendMsg($hExcelRemarksList, $LVM_SETCOLUMNWIDTH, 8, $LVSCW_AUTOSIZE)
+	GUICtrlSendMsg($hExcelRemarksList, $LVM_SETCOLUMNWIDTH, 3, $LVSCW_AUTOSIZE)
 	GUICtrlSendMsg($hExcelRemarksList, $LVM_SETCOLUMNWIDTH, 4, $LVSCW_AUTOSIZE)
 	GUICtrlSendMsg($hExcelRemarksList, $LVM_SETCOLUMNWIDTH, 0, $LVSCW_AUTOSIZE)
 	; To resize to column header
 	GUICtrlSendMsg($hExcelRemarksList, $LVM_SETCOLUMNWIDTH, 1, $LVSCW_AUTOSIZE_USEHEADER)
 	GUICtrlSendMsg($hExcelRemarksList, $LVM_SETCOLUMNWIDTH, 2, $LVSCW_AUTOSIZE_USEHEADER)
-	GUICtrlSendMsg($hExcelRemarksList, $LVM_SETCOLUMNWIDTH, 3, $LVSCW_AUTOSIZE_USEHEADER)
+;~ 	GUICtrlSendMsg($hExcelRemarksList, $LVM_SETCOLUMNWIDTH, 3, $LVSCW_AUTOSIZE_USEHEADER)
+	GUICtrlSendMsg($hExcelRemarksList, $LVM_SETCOLUMNWIDTH, 5, $LVSCW_AUTOSIZE_USEHEADER)
 	GUICtrlSendMsg($hExcelRemarksList, $LVM_SETCOLUMNWIDTH, 6, $LVSCW_AUTOSIZE_USEHEADER)
 	GUICtrlSendMsg($hExcelRemarksList, $LVM_SETCOLUMNWIDTH, 7, $LVSCW_AUTOSIZE_USEHEADER)
-	GUICtrlSendMsg($hExcelRemarksList, $LVM_SETCOLUMNWIDTH, 8, $LVSCW_AUTOSIZE_USEHEADER)
 	GUICtrlSetState($hExcelRemarksList, $GUI_ENABLE)
 	GUICtrlSetState($hCreateAllCoversButton, $GUI_ENABLE)
 	GUICtrlSetState($hCreateAllRecordsTrackingSheet, $GUI_ENABLE)
 	GUICtrlSetState($hCreateAllProofingSheet, $GUI_ENABLE)
 	GUISetState(@SW_MAXIMIZE, $hGUI)
 	Return
-EndFunc
+EndFunc   ;==>fuPopulateListView
 
 ; #FUNCTION# ====================================================================================================================
 ; Name ..........: _GUICtrlListView_CreateArray
@@ -299,9 +308,9 @@ EndFunc
 ; Remarks .......: GUICtrlListView.au3 should be included.
 ; ===============================================================================================================================
 Func _GUICtrlListView_CreateArray($hListView, $sDelimeter = '|', $bAllItems = True)
-    Local $iColumnCount = _GUICtrlListView_GetColumnCount($hListView), $iDim = 0, $iItemCount = 0
+	Local $iColumnCount = _GUICtrlListView_GetColumnCount($hListView), $iDim = 0, $iItemCount = 0
 	Local $aiListIndices[1]
-	$iItemCount = ($bAllItems) ? ( _GUICtrlListView_GetItemCount($hListView)) : (_GUICtrlListView_GetSelectedCount($hListView))
+	$iItemCount = ($bAllItems) ? (_GUICtrlListView_GetItemCount($hListView)) : (_GUICtrlListView_GetSelectedCount($hListView))
 	If $bAllItems Then
 		$aiListIndices[0] = $iItemCount
 		For $a = 0 To $iItemCount - 1
@@ -313,27 +322,27 @@ Func _GUICtrlListView_CreateArray($hListView, $sDelimeter = '|', $bAllItems = Tr
 ;~ 		_ArrayDisplay($aiListIndices, "Indices Array")
 	EndIf
 
-    If $iColumnCount < 3 Then
-        $iDim = 3 - $iColumnCount
-    EndIf
-    If $sDelimeter = Default Then
-        $sDelimeter = '|'
-    EndIf
+	If $iColumnCount < 3 Then
+		$iDim = 3 - $iColumnCount
+	EndIf
+	If $sDelimeter = Default Then
+		$sDelimeter = '|'
+	EndIf
 
-    Local $aColumns = 0, $aReturn[$iItemCount + 1][$iColumnCount + $iDim] = [[$iItemCount, $iColumnCount, '']]
-    For $i = 0 To $iColumnCount - 1
-        $aColumns = _GUICtrlListView_GetColumn($hListView, $i)
-        $aReturn[0][2] &= $aColumns[5] & $sDelimeter
-    Next
-    $aReturn[0][2] = StringTrimRight($aReturn[0][2], StringLen($sDelimeter))
+	Local $aColumns = 0, $aReturn[$iItemCount + 1][$iColumnCount + $iDim] = [[$iItemCount, $iColumnCount, '']]
+	For $i = 0 To $iColumnCount - 1
+		$aColumns = _GUICtrlListView_GetColumn($hListView, $i)
+		$aReturn[0][2] &= $aColumns[5] & $sDelimeter
+	Next
+	$aReturn[0][2] = StringTrimRight($aReturn[0][2], StringLen($sDelimeter))
 
-    For $i = 1 To $iItemCount
-        For $j = 0 To $iColumnCount - 1
-            $aReturn[$i][$j] = _GUICtrlListView_GetItemText($hListView, $aiListIndices[$i], $j)
-        Next
-    Next
+	For $i = 1 To $iItemCount
+		For $j = 0 To $iColumnCount - 1
+			$aReturn[$i][$j] = _GUICtrlListView_GetItemText($hListView, $aiListIndices[$i], $j)
+		Next
+	Next
 ;~ 	_ArrayDisplay($aReturn, "ListView Array")
-    Return SetError(Number($aReturn[0][0] = 0), 0, $aReturn)
+	Return SetError(Number($aReturn[0][0] = 0), 0, $aReturn)
 EndFunc   ;==>_GUICtrlListView_CreateArray
 
 Func fuProduceAllCoverSheets($aRemarks = '')
@@ -341,7 +350,7 @@ Func fuProduceAllCoverSheets($aRemarks = '')
 	$aRemarks = fuRemoveMultiPartDuplicates($aRemarks)
 	Local $asNameState[2]
 	Local $cDay = GUICtrlRead($hDate)
-	Local $aDateTime = StringRegExp($cDay, '(\w+)\s(\d+),\s(\d+)', $STR_REGEXPARRAYMATCH )
+	Local $aDateTime = StringRegExp($cDay, '(\w+)\s(\d+),\s(\d+)', $STR_REGEXPARRAYMATCH)
 	Local $oWord = _Word_Create(False)
 	If @error Then Exit MsgBox($MB_ICONERROR, "createWordDoc: _Word_Create Template Doc", "Error creating a new Word instance." _
 			 & @CRLF & "@error = " & @error & ", @extended = " & @extended)
@@ -351,7 +360,7 @@ Func fuProduceAllCoverSheets($aRemarks = '')
 	ProgressOn("Cover Sheets", "Preparing Cover Sheets", "0%")
 	Local $iProgress = 0
 	For $iRemarkRec = $aRemarks[0][0] To 1 Step -1
-		If $aRemarks[$iRemarkRec][6] <> "" Then
+		If $aRemarks[$iRemarkRec][5] <> "" Then
 			$oDoc.Application.Selection.Range.InsertFile($sRegSpeechFile)
 		Else
 			$oDoc.Application.Selection.Range.InsertFile($sRegRemarksFile)
@@ -359,54 +368,55 @@ Func fuProduceAllCoverSheets($aRemarks = '')
 
 		_Word_DocFindReplace($oDoc, "HAMMER No.", $aDateTime[1] & " 8 " & $aRemarks[$iRemarkRec][1])
 		If @error Then Exit MsgBox($MB_SYSTEMMODAL, "Word UDF: _Word_DocFindReplace HAMMER No.", _
-			"Error replacing text in the document: HAMMER No." & @CRLF & "@error = " & @error & ", @extended = " & @extended)
-		_Word_DocFindReplace($oDoc, "REMARK TITLE", $aRemarks[$iRemarkRec][9], $wdReplaceOne, Default, True)
+				"Error replacing text in the document: HAMMER No." & @CRLF & "@error = " & @error & ", @extended = " & @extended)
+		_Word_DocFindReplace($oDoc, "REMARK TITLE", $aRemarks[$iRemarkRec][8], $wdReplaceOne, Default, True)
 		If @error Then Exit MsgBox($MB_SYSTEMMODAL, "Word UDF: _Word_DocFindReplace REMARK TITLE", _
-			"Error replacing text in the document: REMARK TITLE" & @CRLF & "@error = " & @error & ", @extended = " & @extended)
-		$asNameState = fuExtractMemberName($aRemarks[$iRemarkRec][4])
+				"Error replacing text in the document: REMARK TITLE" & @CRLF & "@error = " & @error & ", @extended = " & @extended)
+		$asNameState = fuExtractMemberName($aRemarks[$iRemarkRec][3])
 		_Word_DocFindReplace($oDoc, "MEMBER NAME", $asNameState[0], $wdReplaceOne, Default, True)
 		If @error Then Exit MsgBox($MB_SYSTEMMODAL, "Word UDF: _Word_DocFindReplace MEMBER NAME", _
-			"Error replacing text in the document: MEMBER NAME" & @CRLF & "@error = " & @error & ", @extended = " & @extended)
+				"Error replacing text in the document: MEMBER NAME" & @CRLF & "@error = " & @error & ", @extended = " & @extended)
 		_Word_DocFindReplace($oDoc, "state name", $asNameState[1], $wdReplaceOne, Default, True)
 		If @error Then Exit MsgBox($MB_SYSTEMMODAL, "Word UDF: _Word_DocFindReplace state name", _
-			"Error replacing text in the document: state name" & @CRLF & "@error = " & @error & ", @extended = " & @extended)
+				"Error replacing text in the document: state name" & @CRLF & "@error = " & @error & ", @extended = " & @extended)
 		_Word_DocFindReplace($oDoc, "Day", $aDateTime[1], $wdReplaceOne, Default, True)
 		If @error Then Exit MsgBox($MB_SYSTEMMODAL, "Word UDF: _Word_DocFindReplace Day", _
-			"Error replacing text in the document: Day" & @CRLF & "@error = " & @error & ", @extended = " & @extended)
+				"Error replacing text in the document: Day" & @CRLF & "@error = " & @error & ", @extended = " & @extended)
 		_Word_DocFindReplace($oDoc, "Month date", $aDateTime[0], $wdReplaceOne, Default, True)
 		If @error Then Exit MsgBox($MB_SYSTEMMODAL, "Word UDF: _Word_DocFindReplace Month date", _
-			"Error replacing text in the document: Month date" & @CRLF & "@error = " & @error & ", @extended = " & @extended)
+				"Error replacing text in the document: Month date" & @CRLF & "@error = " & @error & ", @extended = " & @extended)
 		_Word_DocFindReplace($oDoc, "year", $aDateTime[2], $wdReplaceOne, Default, True)
 		If @error Then Exit MsgBox($MB_SYSTEMMODAL, "Word UDF: _Word_DocFindReplace year", _
-			"Error replacing text in the document: year" & @CRLF & "@error = " & @error & ", @extended = " & @extended)
+				"Error replacing text in the document: year" & @CRLF & "@error = " & @error & ", @extended = " & @extended)
 		_Word_DocFindReplace($oDoc, "Mr. (Mrs./Ms.)", $asNameState[2], $wdReplaceOne, Default, True)
 		If @error Then Exit MsgBox($MB_SYSTEMMODAL, "Word UDF: _Word_DocFindReplace Mr. (Mrs./Ms.)", _
-			"Error replacing text in the document: Mr. (Mrs./Ms.)" & @CRLF & "@error = " & @error & ", @extended = " & @extended)
+				"Error replacing text in the document: Mr. (Mrs./Ms.)" & @CRLF & "@error = " & @error & ", @extended = " & @extended)
 		_Word_DocFindReplace($oDoc, "MEMBER LAST NAME", $asNameState[3], $wdReplaceOne, Default, True)
 		If @error Then Exit MsgBox($MB_SYSTEMMODAL, "Word UDF: _Word_DocFindReplace MEMBER LAST NAME", _
-			"Error replacing text in the document: MEMBER LAST NAME" & @CRLF & "@error = " & @error & ", @extended = " & @extended)
-		If $aRemarks[$iRemarkRec][8] <> "" Then
+				"Error replacing text in the document: MEMBER LAST NAME" & @CRLF & "@error = " & @error & ", @extended = " & @extended)
+		If $aRemarks[$iRemarkRec][7] <> "" Then
 			_Word_DocFindReplace($oDoc, "Mr. (Madam)", "Madam", $wdReplaceOne, Default, True)
 			If @error Then Exit MsgBox($MB_SYSTEMMODAL, "Word UDF: _Word_DocFindReplace Mr. (Madam)", _
-				"Error replacing text in the document: Mr. (Madam)" & @CRLF & "@error = " & @error & ", @extended = " & @extended)
+					"Error replacing text in the document: Mr. (Madam)" & @CRLF & "@error = " & @error & ", @extended = " & @extended)
 		Else
 			_Word_DocFindReplace($oDoc, "Mr. (Madam)", "Mr.", $wdReplaceOne, Default, True)
 			If @error Then Exit MsgBox($MB_SYSTEMMODAL, "Word UDF: _Word_DocFindReplace Mr. (Madam)", _
-				"Error replacing text in the document: Mr. (Madam)" & @CRLF & "@error = " & @error & ", @extended = " & @extended)
+					"Error replacing text in the document: Mr. (Madam)" & @CRLF & "@error = " & @error & ", @extended = " & @extended)
 		EndIf
-		if $iRemarkRec <> 1 Then $oDoc.Application.Selection.Range.InsertBreak($wdPageBreak)
+		If $iRemarkRec <> 1 Then $oDoc.Application.Selection.Range.InsertBreak($wdPageBreak)
 		$iProgress += 1
-		ProgressSet((100 / $aRemarks[0][0]) * ( $iProgress), Int((100 / $aRemarks[0][0]) * ( $iProgress)) & "%")
+		ProgressSet((100 / $aRemarks[0][0]) * ($iProgress), Int((100 / $aRemarks[0][0]) * ($iProgress)) & "%")
 	Next
 	ProgressSet(100, "Done!")
 	Sleep(750)
 	ProgressOff()
 	$oWord.Visible = True
 	Return
-EndFunc
+EndFunc   ;==>fuProduceAllCoverSheets
 
 Func fuExtractMemberName($sSalutNameState)
 	Local $sSalutations[0], $asNamesState = StringSplit($sSalutNameState, ", ", $STR_ENTIRESPLIT), $asLastName[0]
+;~ 	_ArrayDisplay($asNamesState, "Name, State")
 	Local $sSalutaion = "", $sNameString = "", $sStateString = "", $sLastName = ""
 	Local $oRangeFound, $oRangeText, $oWord = _Word_Create(False, Default)
 	If @error Then Exit MsgBox($MB_ICONERROR, "createWordDoc: _Word_Create House Members", "Error creating a new Word instance." & _
@@ -417,28 +427,28 @@ Func fuExtractMemberName($sSalutNameState)
 	$oRangeFound = _Word_DocFind($oWordDoc, $sSalutNameState, 0)
 	If @error <> 0 Then
 		MsgBox($MB_SYSTEMMODAL, "Word UDF: _Word_DocFind in House.doc Names.", "Error finding text in the document: " & $sSalutNameState & _
-			@CRLF & "@error = " & @error & ", @extended = " & @extended)
+				@CRLF & "@error = " & @error & ", @extended = " & @extended)
 		$sLastName = StringStripWS($asNamesState[1], $STR_STRIPLEADING + $STR_STRIPTRAILING)
 	Else
 		$oRangeText = _Word_DocRangeSet($oWordDoc, $oRangeFound, Default, Default, $wdParagraph, 1)
-		$asLastName = StringRegExp($oRangeText.Text, "(?s)•\s([]\w\s]+)\(*", $STR_REGEXPARRAYMATCH)
+		$asLastName = StringRegExp($oRangeText.Text, "(?s)•\s([]\S\s]+)\sof", $STR_REGEXPARRAYMATCH)
 		If @error == 1 Then
 			$sLastName = StringStripWS($asNamesState[1], $STR_STRIPLEADING + $STR_STRIPTRAILING)
 		ElseIf @error == 2 Then
 			Exit MsgBox($MB_SYSTEMMODAL, "RegExp: StringStripWS Mr. (Mrs./Ms.)", _
-				"Error replacing text in the document. RegExp: StringStripWS Mr. (Mrs./Ms.)" & @CRLF & "@error = " & @error & ", @extended = " & @extended)
+					"Error replacing text in the document. RegExp: StringStripWS Mr. (Mrs./Ms.)" & @CRLF & "@error = " & @error & ", @extended = " & @extended)
 		Else
 			$sLastName = StringStripWS($asLastName[0], $STR_STRIPLEADING + $STR_STRIPTRAILING)
 		EndIf
 	EndIf
 	_Word_DocClose($oWordDoc)
 	_Word_Quit($oWord)
-	$sSalutations = StringRegExp($asNamesState[3], "(?s)\((.*)\)", $STR_REGEXPARRAYMATCH  )
+	$sSalutations = StringRegExp($asNamesState[3], "(?s)\((.*)\)", $STR_REGEXPARRAYMATCH)
 	If @error == 1 Then
 		$sSalutation = "Mr."
 	ElseIf @error == 2 Then
 		Exit MsgBox($MB_SYSTEMMODAL, "RegExp: StringStripWS Mr. (Mrs./Ms.)", _
-			"Error replacing text in the document. RegExp: StringStripWS Mr. (Mrs./Ms.)" & @CRLF & "@error = " & @error & ", @extended = " & @extended)
+				"Error replacing text in the document. RegExp: StringStripWS Mr. (Mrs./Ms.)" & @CRLF & "@error = " & @error & ", @extended = " & @extended)
 	Else
 		$sSalutation = $sSalutations[0]
 	EndIf
@@ -455,48 +465,48 @@ Func fuExtractMemberName($sSalutNameState)
 
 	Local $asNameState[4] = [$sNameString, $sStateString, $sSalutation, $sLastName]
 	Return $asNameState
-EndFunc
+EndFunc   ;==>fuExtractMemberName
 
 Func fuRemoveMultiPartDuplicates($asRemarks)
 	Local $asMultiPartRemarks[0]
-	For $iRemarkRec = 1 to $asRemarks[0][0] - 1
-		If $asRemarks[$iRemarkRec][9] <> "" Then
-			If _ArraySearch($asMultiPartRemarks, $asRemarks[$iRemarkRec][9]) <> -1 Then
+	For $iRemarkRec = 1 To $asRemarks[0][0] - 1
+		If $asRemarks[$iRemarkRec][8] <> "" Then
+			If _ArraySearch($asMultiPartRemarks, $asRemarks[$iRemarkRec][8]) <> -1 Then
 				_ArrayDelete($asRemarks, $iRemarkRec)
 				If @error Then Exit MsgBox($MB_SYSTEMMODAL, "MultiPartDedupe: _ArrayDelete", _
-					"Error deleting multi part duplicate from array" & @CRLF & "@error = " & @error & ", @extended = " & @extended)
+						"Error deleting multi part duplicate from array" & @CRLF & "@error = " & @error & ", @extended = " & @extended)
 				$asRemarks[0][0] -= 1
 			Else
-				_ArrayAdd($asMultiPartRemarks, $asRemarks[$iRemarkRec][9])
+				_ArrayAdd($asMultiPartRemarks, $asRemarks[$iRemarkRec][8])
 				If @error Then Exit MsgBox($MB_SYSTEMMODAL, "MultiPartDedupe: _ArrayAdd", _
-					"Error adding multi part duplicate to array" & @CRLF & "@error = " & @error & ", @extended = " & @extended)
+						"Error adding multi part duplicate to array" & @CRLF & "@error = " & @error & ", @extended = " & @extended)
 			EndIf
 		EndIf
 
 	Next
 	Return $asRemarks
-EndFunc
+EndFunc   ;==>fuRemoveMultiPartDuplicates
 
 Func WM_NOTIFY($hWnd, $iMsg, $iwParam, $ilParam)
-    #forceref $hWnd, $iMsg, $iwParam
-    Local $hWndFrom, $iIDFrom, $iCode, $tNMHDR, $hWndListView, $tInfo
-    $hWndListView = $hExcelRemarksList
-    If Not IsHWnd($hExcelRemarksList) Then $hWndListView = GUICtrlGetHandle($hExcelRemarksList)
+	#forceref $hWnd, $iMsg, $iwParam
+	Local $hWndFrom, $iIDFrom, $iCode, $tNMHDR, $hWndListView, $tInfo
+	$hWndListView = $hExcelRemarksList
+	If Not IsHWnd($hExcelRemarksList) Then $hWndListView = GUICtrlGetHandle($hExcelRemarksList)
 
-    $tNMHDR = DllStructCreate($tagNMHDR, $ilParam)
-    $hWndFrom = HWnd(DllStructGetData($tNMHDR, "hWndFrom"))
-    $iIDFrom = DllStructGetData($tNMHDR, "IDFrom")
-    $iCode = DllStructGetData($tNMHDR, "Code")
-    Switch $hWndFrom
-        Case $hWndListView
-            Switch $iCode
-                Case $NM_CLICK ; Sent by a list-view control when the user clicks an item with the left mouse button
+	$tNMHDR = DllStructCreate($tagNMHDR, $ilParam)
+	$hWndFrom = HWnd(DllStructGetData($tNMHDR, "hWndFrom"))
+	$iIDFrom = DllStructGetData($tNMHDR, "IDFrom")
+	$iCode = DllStructGetData($tNMHDR, "Code")
+	Switch $hWndFrom
+		Case $hWndListView
+			Switch $iCode
+				Case $NM_CLICK ; Sent by a list-view control when the user clicks an item with the left mouse button
 					GUICtrlSetState($hCreateSelectedCoversButton, $GUI_ENABLE)
 					GUICtrlSetState($hCreateSelectedTrackingSheet, $GUI_ENABLE)
 					GUICtrlSetState($hCreateSelectedProofingSheet, $GUI_ENABLE)
-            EndSwitch
-    EndSwitch
-    Return $GUI_RUNDEFMSG
+			EndSwitch
+	EndSwitch
+	Return $GUI_RUNDEFMSG
 EndFunc   ;==>WM_NOTIFY
 
 Func fuCreateTrackingSheet($aRemarks)
@@ -519,74 +529,74 @@ Func fuCreateTrackingSheet($aRemarks)
 	$oAppl.ActiveSheet.Columns("A:A").ColumnWidth = 1
 	$oAppl.ActiveSheet.Columns("B:B").ColumnWidth = 9
 	$oAppl.ActiveSheet.Columns("C:C").ColumnWidth = 5
-	$oAppl.ActiveSheet.Columns("D:D").ColumnWidth = 7
-	$oAppl.ActiveSheet.Columns("E:E").ColumnWidth = 41
-	$oAppl.ActiveSheet.Columns("F:F").ColumnWidth = 20
-	$oAppl.ActiveSheet.Columns("G:G").ColumnWidth = 1
+;~ 	$oAppl.ActiveSheet.Columns("D:D").ColumnWidth = 7
+	$oAppl.ActiveSheet.Columns("D:D").ColumnWidth = 41
+	$oAppl.ActiveSheet.Columns("E:E").ColumnWidth = 20
+	$oAppl.ActiveSheet.Columns("F:F").ColumnWidth = 1
+	$oAppl.ActiveSheet.Columns("G:G").ColumnWidth = 5
 	$oAppl.ActiveSheet.Columns("H:H").ColumnWidth = 5
-	$oAppl.ActiveSheet.Columns("I:I").ColumnWidth = 5
-	$oAppl.ActiveSheet.Range("A:I").WrapText = True
-	$oAppl.ActiveSheet.Range("A:I").VerticalAlignment = -4108
-	$oAppl.ActiveSheet.Range("B:D").HorizontalAlignment = -4108
-	$oAppl.ActiveSheet.Range("E1:F2").HorizontalAlignment = -4108
-	$oAppl.ActiveSheet.Range("A:I").NumberFormat = "@"
-	With $oAppl.ActiveSheet.Range("A3:I" & UBound($aRemarks) + 3)
+	$oAppl.ActiveSheet.Range("A:H").WrapText = True
+	$oAppl.ActiveSheet.Range("A:H").VerticalAlignment = -4108
+	$oAppl.ActiveSheet.Range("B:C").HorizontalAlignment = -4108
+	$oAppl.ActiveSheet.Range("D1:E2").HorizontalAlignment = -4108
+	$oAppl.ActiveSheet.Range("A:H").NumberFormat = "@"
+	With $oAppl.ActiveSheet.Range("A3:H" & UBound($aRemarks) + 3)
 		.Borders.LineStyle = 1
 	EndWith
-	With $oAppl.ActiveSheet.Range("A1:I2")
+	With $oAppl.ActiveSheet.Range("A1:H2")
 		.Borders(9).LineStyle = 1
 		.Borders(8).LineStyle = 1
 		.Borders(7).LineStyle = 1
 		.Borders(10).LineStyle = 1
 	EndWith
-	$oAppl.ActiveSheet.Range("A3:F3, H3:I3").HorizontalAlignment = -4108
-	With $oAppl.ActiveSheet.Range("E2").Font
+	$oAppl.ActiveSheet.Range("A3:E3, G3:H3").HorizontalAlignment = -4108
+	With $oAppl.ActiveSheet.Range("D2").Font
 		.Size = 26
 		.Bold = True
 	EndWith
-	With $oAppl.ActiveSheet.Range("F2:I2")
+	With $oAppl.ActiveSheet.Range("F2:H2")
 		.Merge
 		.Font.Size = 14
 	EndWith
-	With $oAppl.ActiveSheet.Range("A3:I3")
+	With $oAppl.ActiveSheet.Range("A3:H3")
 		.Font.Size = 9
 		.Font.Bold = True
 		.Interior.ColorIndex = 15
 	EndWith
 
-	Local $aHeadings[1][9] = [["", "EXTENSION NUMBER", "PAGE SPAN", "MARKUP PERSON INITIALS", "AUTHOR / HOUSE MEMBER", "COMMENTS", "SPEECH", "OPER-ATOR", "TIME OUT"]]
+	Local $aHeadings[1][9] = [["", "EXTENSION NUMBER", "PAGE SPAN", "AUTHOR / HOUSE MEMBER", "COMMENTS", "SPEECH", "OPER-ATOR", "TIME OUT"]]
 	_Excel_RangeWrite($oWorkbook, $oWorkbook.Activesheet, $aHeadings, "A3")
 	If @error Then Exit MsgBox($MB_SYSTEMMODAL, "Excel UDF: _Excel_RangeWrite Headigsh", "Error writing Headings to worksheet." & @CRLF & "@error = " & @error & ", @extended = " & @extended)
-	_Excel_RangeWrite($oWorkbook, $oWorkbook.Activesheet,  "Congressional Record", "E1")
+	_Excel_RangeWrite($oWorkbook, $oWorkbook.Activesheet, "Congressional Record", "D1")
 	If @error Then Exit MsgBox($MB_SYSTEMMODAL, "Excel UDF: _Excel_RangeWrite Congressional Record", "Error writing 'Congressional Record' to worksheet." & @CRLF & "@error = " & @error & ", @extended = " & @extended)
-	_Excel_RangeWrite($oWorkbook, $oWorkbook.Activesheet,  "REMARKS", "E2")
+	_Excel_RangeWrite($oWorkbook, $oWorkbook.Activesheet, "REMARKS", "D2")
 	If @error Then Exit MsgBox($MB_SYSTEMMODAL, "Excel UDF: _Excel_RangeWrite REMARKS", "Error writing 'REMARKS' to worksheet." & @CRLF & "@error = " & @error & ", @extended = " & @extended)
-	_Excel_RangeWrite($oWorkbook, $oWorkbook.Activesheet,  $cDay, "F2")
+	_Excel_RangeWrite($oWorkbook, $oWorkbook.Activesheet, $cDay, "E2")
 	If @error Then Exit MsgBox($MB_SYSTEMMODAL, "Excel UDF: _Excel_RangeWrite Date", "Error writing Date to worksheet." & @CRLF & "@error = " & @error & ", @extended = " & @extended)
 	_Excel_RangeWrite($oWorkbook, $oWorkbook.Activesheet, $aRemarks, "A4", Default, True)
 	If @error Then Exit MsgBox($MB_SYSTEMMODAL, "Excel UDF: _Excel_RangeWrite Remarks", "Error writing Remarks to worksheet." & @CRLF & "@error = " & @error & ", @extended = " & @extended)
 
 	Return
-EndFunc
+EndFunc   ;==>fuCreateTrackingSheet
 
 Func _ArrayDeleteCol(ByRef $avWork, $iCol)
-    If Not IsArray($avWork) Then Return SetError(1, 0, 0); Not an array
-    If UBound($avWork, 0) <> 2 Then Return SetError(1, 1, 0); Not a 2D array
-    If ($iCol < 0) Or ($iCol > (UBound($avWork, 2) - 1)) Then Return SetError(1, 2, 0); $iCol out of range
-    If $iCol < UBound($avWork, 2) - 1 Then
-        For $c = $iCol To UBound($avWork, 2) - 2
-            For $r = 0 To UBound($avWork) - 1
-                $avWork[$r][$c] = $avWork[$r][$c + 1]
-            Next
-        Next
-    EndIf
-    ReDim $avWork[UBound($avWork)][UBound($avWork, 2) - 1]
-    Return 1
-EndFunc
+	If Not IsArray($avWork) Then Return SetError(1, 0, 0); Not an array
+	If UBound($avWork, 0) <> 2 Then Return SetError(1, 1, 0); Not a 2D array
+	If ($iCol < 0) Or ($iCol > (UBound($avWork, 2) - 1)) Then Return SetError(1, 2, 0); $iCol out of range
+	If $iCol < UBound($avWork, 2) - 1 Then
+		For $c = $iCol To UBound($avWork, 2) - 2
+			For $r = 0 To UBound($avWork) - 1
+				$avWork[$r][$c] = $avWork[$r][$c + 1]
+			Next
+		Next
+	EndIf
+	ReDim $avWork[UBound($avWork)][UBound($avWork, 2) - 1]
+	Return 1
+EndFunc   ;==>_ArrayDeleteCol
 
 Func fuCreateProofingSheet($aRemarks)
 	If Not IsArray($aRemarks) Or $aRemarks[0][0] = 0 Then Return MsgBox($MB_ICONERROR, 'Error', 'ListView array is either empty or invalid!!!')
-
+;~ 	_ArrayDisplay($aRemarks, "Proofing Sheet Array")
 	; Create application object and create a new workbook
 	Local $oAppl = _Excel_Open()
 	If @error Then Exit MsgBox($MB_SYSTEMMODAL, "Excel UDF: _Excel_RangeWrite Example", "Error creating the Excel application object." & @CRLF & "@error = " & @error & ", @extended = " & @extended)
@@ -601,7 +611,7 @@ Func fuCreateProofingSheet($aRemarks)
 		_ArrayDeleteCol($aRemarks, UBound($aRemarks, 2) - 2)
 	Next
 
-	_ArrayDeleteCol($aRemarks, 2)
+;~ 	_ArrayDeleteCol($aRemarks, 2)
 	_ArrayDeleteCol($aRemarks, 2)
 	$oAppl.ActiveSheet.Columns("A:A").ColumnWidth = 1
 	$oAppl.ActiveSheet.Columns("B:B").ColumnWidth = 9
@@ -630,4 +640,4 @@ Func fuCreateProofingSheet($aRemarks)
 	If @error Then Exit MsgBox($MB_SYSTEMMODAL, "Excel UDF: _Excel_RangeWrite Remarks", "Error writing Remarks to worksheet." & @CRLF & "@error = " & @error & ", @extended = " & @extended)
 
 	Return
-EndFunc
+EndFunc   ;==>fuCreateProofingSheet
