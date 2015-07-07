@@ -1,9 +1,10 @@
 ﻿#Region ;**** Directives created by AutoIt3Wrapper_GUI ****
 #AutoIt3Wrapper_UseX64=n
 #AutoIt3Wrapper_Res_Description=Application Processing Congressional Remarks Spreadsheet
-#AutoIt3Wrapper_Res_Fileversion=1.1.0.6
+#AutoIt3Wrapper_Res_Fileversion=1.1.1.1
 #AutoIt3Wrapper_Res_Fileversion_AutoIncrement=y
 #AutoIt3Wrapper_Res_LegalCopyright=U.S. GPO
+#AutoIt3Wrapper_Res_Language=1033
 #AutoIt3Wrapper_Run_Tidy=y
 #AutoIt3Wrapper_Run_Au3Stripper=y
 #EndRegion ;**** Directives created by AutoIt3Wrapper_GUI ****
@@ -218,7 +219,7 @@ Func On_Click()
 			If IsArray($aExcelRemarksData) Then fuPopulateListView($aExcelRemarksData)
 		Case $hCreateAllCoversButton
 			Local $aAllRemarks = _GUICtrlListView_CreateArray($hExcelRemarksList)
-			fuProduceAllCoverSheets($aAllRemarks)
+			fuProduceAllCoverSheets($aAllRemarks, True)
 		Case $hDefault_Button
 			$sExcelFileDir = $sExcelFileDirDefault
 			GUICtrlSetData($hExcelFolder, $sExcelFileDir)
@@ -331,10 +332,8 @@ Func _GUICtrlListView_CreateArray($hListView, $sDelimeter = '|', $bAllItems = Tr
 		For $a = 0 To $iItemCount - 1
 			_ArrayAdd($aiListIndices, $a)
 		Next
-;~  		_ArrayDisplay($aiListIndices, "Indices Array")
 	Else
 		$aiListIndices = _GUICtrlListView_GetSelectedIndices($hListView, True)
-;~ 		_ArrayDisplay($aiListIndices, "Indices Array")
 	EndIf
 
 	If $iColumnCount < 3 Then
@@ -359,7 +358,7 @@ Func _GUICtrlListView_CreateArray($hListView, $sDelimeter = '|', $bAllItems = Tr
 	Return SetError(Number($aReturn[0][0] = 0), 0, $aReturn)
 EndFunc   ;==>_GUICtrlListView_CreateArray
 
-Func fuProduceAllCoverSheets($aRemarks = '')
+Func fuProduceAllCoverSheets($aRemarks = '', $bAllButton = False)
 	If Not IsArray($aRemarks) Or $aRemarks[0][0] = 0 Then Return MsgBox($MB_ICONERROR, 'Error', 'ListView array is either empty or invalid!!!')
 	$aRemarks = fuRemoveMultiPartDuplicates($aRemarks)
 	Local $asNameState[7]
@@ -374,6 +373,10 @@ Func fuProduceAllCoverSheets($aRemarks = '')
 	ProgressOn("Cover Sheets", "Preparing Cover Sheets", "0%")
 	Local $iProgress = 0
 	For $iRemarkRec = $aRemarks[0][0] To 1 Step -1
+		If $bAllButton And $aRemarks[$iRemarkRec][0] <> "" Then
+			ContinueLoop
+		EndIf
+
 		If $aRemarks[$iRemarkRec][9] <> "" Then
 			$oDoc.Application.Selection.Range.InsertFile($sRegSpeechFile)
 		ElseIf $aRemarks[$iRemarkRec][10] <> "" Then
@@ -382,52 +385,58 @@ Func fuProduceAllCoverSheets($aRemarks = '')
 			$oDoc.Application.Selection.Range.InsertFile($sRegRemarksFile)
 		EndIf
 
-		_Word_DocFindReplace($oDoc, "<HAMMER NUMBER>", $aDateTime[1] & " 8 " & $aRemarks[$iRemarkRec][1])
-		If @error Then Exit MsgBox($MB_SYSTEMMODAL, "Word UDF: _Word_DocFindReplace <HAMMER NUMBER>", _
+		_Word_DocFindReplace($oDoc, "<HAMMER NUMBER>", StringFormat("%02u", $aDateTime[1]) & " 8 " & $aRemarks[$iRemarkRec][1])
+		If @error Then MsgBox($MB_SYSTEMMODAL, "Word UDF: _Word_DocFindReplace <HAMMER NUMBER>", _
 				"Error replacing text in the document: <HAMMER NUMBER>" & @CRLF & "@error = " & @error & ", @extended = " & @extended)
-		_Word_DocFindReplace($oDoc, "<TITLE>", $aRemarks[$iRemarkRec][8], $wdReplaceOne, Default, True)
-		If @error Then Exit MsgBox($MB_SYSTEMMODAL, "Word UDF: _Word_DocFindReplace REMARK TITLE", _
+		_Word_DocFindReplace($oDoc, "<TITLE>", $aRemarks[$iRemarkRec][7], $wdReplaceOne, Default, True)
+		If @error Then MsgBox($MB_SYSTEMMODAL, "Word UDF: _Word_DocFindReplace REMARK TITLE", _
 				"Error replacing text in the document: REMARK TITLE" & @CRLF & "@error = " & @error & ", @extended = " & @extended)
 		$asNameState = fuExtractMemberName($aRemarks[$iRemarkRec][3])
 		_Word_DocFindReplace($oDoc, "<MEMBER FIRST NAME>", $asNameState[2], $wdReplaceOne, Default, True)
-		If @error Then Exit MsgBox($MB_SYSTEMMODAL, "Word UDF: _Word_DocFindReplace <MEMBER FIRST NAME>", _
+		If @error Then MsgBox($MB_SYSTEMMODAL, "Word UDF: _Word_DocFindReplace <MEMBER FIRST NAME>", _
 				"Error replacing text in the document: <MEMBER FIRST NAME>" & @CRLF & "@error = " & @error & ", @extended = " & @extended)
 		_Word_DocFindReplace($oDoc, "<MEMBER LAST NAME>", $asNameState[1], $wdReplaceOne, Default, True)
-		If @error Then Exit MsgBox($MB_SYSTEMMODAL, "Word UDF: _Word_DocFindReplace <MEMBER LAST NAME>", _
+		If @error Then MsgBox($MB_SYSTEMMODAL, "Word UDF: _Word_DocFindReplace <MEMBER LAST NAME>", _
 				"Error replacing text in the document: <MEMBER LAST NAME>" & @CRLF & "@error = " & @error & ", @extended = " & @extended)
 		_Word_DocFindReplace($oDoc, "<MEMBER SUFFIX>", $asNameState[3], $wdReplaceOne, Default, True)
-		If @error Then Exit MsgBox($MB_SYSTEMMODAL, "Word UDF: _Word_DocFindReplace <MEMBER SUFFIX>", _
+		If @error Then MsgBox($MB_SYSTEMMODAL, "Word UDF: _Word_DocFindReplace <MEMBER SUFFIX>", _
 				"Error replacing text in the document: <MEMBER SUFFIX>" & @CRLF & "@error = " & @error & ", @extended = " & @extended)
 		_Word_DocFindReplace($oDoc, "<STATE>", $asNameState[4], $wdReplaceOne, Default, True)
-		If @error Then Exit MsgBox($MB_SYSTEMMODAL, "Word UDF: _Word_DocFindReplace <STATE>", _
+		If @error Then MsgBox($MB_SYSTEMMODAL, "Word UDF: _Word_DocFindReplace <STATE>", _
 				"Error replacing text in the document: <STATE>" & @CRLF & "@error = " & @error & ", @extended = " & @extended)
-		_Word_DocFindReplace($oDoc, "<DATE>", $cDay, $wdReplaceOne, Default, True)
-		If @error Then Exit MsgBox($MB_SYSTEMMODAL, "Word UDF: _Word_DocFindReplace <DATE>", _
-				"Error replacing text in the document: <DATE>" & @CRLF & "@error = " & @error & ", @extended = " & @extended)
+		If $aRemarks[$iRemarkRec][9] <> "" Or $aRemarks[$iRemarkRec][10] <> "" Then
+			_Word_DocFindReplace($oDoc, "<DATE>", $aRemarks[$iRemarkRec][8], $wdReplaceOne, Default, True)
+			If @error Then MsgBox($MB_SYSTEMMODAL, "Word UDF: _Word_DocFindReplace <DATE>", _
+					"Error replacing text in the document: <DATE>" & @CRLF & "@error = " & @error & ", @extended = " & @extended)
+		Else
+			_Word_DocFindReplace($oDoc, "<DATE>", $cDay, $wdReplaceOne, Default, True)
+			If @error Then MsgBox($MB_SYSTEMMODAL, "Word UDF: _Word_DocFindReplace <DATE>", _
+					"Error replacing text in the document: <DATE>" & @CRLF & "@error = " & @error & ", @extended = " & @extended)
+		EndIf
 		If $aRemarks[$iRemarkRec][10] <> "" Then
 			_Word_DocFindReplace($oDoc, "<RECORD TEXT>", $aRemarks[$iRemarkRec][11], $wdReplaceOne, Default, True)
-			If @error Then Exit MsgBox($MB_SYSTEMMODAL, "Word UDF: _Word_DocFindReplace <RECORD TEXT>", _
+			If @error Then MsgBox($MB_SYSTEMMODAL, "Word UDF: _Word_DocFindReplace <RECORD TEXT>", _
 					"Error replacing text in the document: <RECORD TEXT>" & @CRLF & "@error = " & @error & ", @extended = " & @extended)
 		EndIf
 		_Word_DocFindReplace($oDoc, "<MEMBER PREFIX>", $asNameState[5], $wdReplaceOne, Default, True)
-		If @error Then Exit MsgBox($MB_SYSTEMMODAL, "Word UDF: _Word_DocFindReplace <MEMBER PREFIX>", _
+		If @error Then MsgBox($MB_SYSTEMMODAL, "Word UDF: _Word_DocFindReplace <MEMBER PREFIX>", _
 				"Error replacing text in the document: <MEMBER PREFIX>" & @CRLF & "@error = " & @error & ", @extended = " & @extended)
 		If $asNameState[6] <> "" Then
 			_Word_DocFindReplace($oDoc, "<MEMBER ALTERNATE NAME>", $asNameState[6], $wdReplaceOne, Default, True)
-			If @error Then Exit MsgBox($MB_SYSTEMMODAL, "Word UDF: _Word_DocFindReplace <MEMBER ALTERNATE NAME>", _
+			If @error Then MsgBox($MB_SYSTEMMODAL, "Word UDF: _Word_DocFindReplace <MEMBER ALTERNATE NAME>", _
 					"Error replacing text in the document: <MEMBER ALTERNATE NAME>" & @CRLF & "@error = " & @error & ", @extended = " & @extended)
 		Else
 			_Word_DocFindReplace($oDoc, "<MEMBER ALTERNATE NAME>", $asNameState[1], $wdReplaceOne, Default, True)
-			If @error Then Exit MsgBox($MB_SYSTEMMODAL, "Word UDF: _Word_DocFindReplace <MEMBER ALTERNATE NAME>", _
+			If @error Then MsgBox($MB_SYSTEMMODAL, "Word UDF: _Word_DocFindReplace <MEMBER ALTERNATE NAME>", _
 					"Error replacing text in the document: <MEMBER ALTERNATE NAME>" & @CRLF & "@error = " & @error & ", @extended = " & @extended)
 		EndIf
-		If $aRemarks[$iRemarkRec][8] <> "" Then
+		If $aRemarks[$iRemarkRec][6] <> "" Then
 			_Word_DocFindReplace($oDoc, "<MADAM>", "Madam", $wdReplaceOne, Default, True)
-			If @error Then Exit MsgBox($MB_SYSTEMMODAL, "Word UDF: _Word_DocFindReplace Mr. (Madam)", _
+			If @error Then MsgBox($MB_SYSTEMMODAL, "Word UDF: _Word_DocFindReplace Mr. (Madam)", _
 					"Error replacing text in the document: Mr. (Madam)" & @CRLF & "@error = " & @error & ", @extended = " & @extended)
 		Else
 			_Word_DocFindReplace($oDoc, "<MADAM>", "Mr.", $wdReplaceOne, Default, True)
-			If @error Then Exit MsgBox($MB_SYSTEMMODAL, "Word UDF: _Word_DocFindReplace Mr. (Madam)", _
+			If @error Then MsgBox($MB_SYSTEMMODAL, "Word UDF: _Word_DocFindReplace Mr. (Madam)", _
 					"Error replacing text in the document: Mr. (Madam)" & @CRLF & "@error = " & @error & ", @extended = " & @extended)
 		EndIf
 		If $iRemarkRec <> 1 Then $oDoc.Application.Selection.Range.InsertBreak($wdPageBreak)
@@ -530,7 +539,6 @@ Func fuCreateTrackingSheet($aRemarks)
 	$oAppl.ActiveSheet.Columns("C:C").ColumnWidth = 5
 	$oAppl.ActiveSheet.Columns("D:D").ColumnWidth = 41
 	$oAppl.ActiveSheet.Columns("E:E").ColumnWidth = 20
-;~ 	$oAppl.ActiveSheet.Columns("F:F").ColumnWidth = 1
 	$oAppl.ActiveSheet.Columns("F:F").ColumnWidth = 5
 	$oAppl.ActiveSheet.Columns("G:G").ColumnWidth = 5
 	$oAppl.ActiveSheet.Range("A:G").WrapText = True
@@ -560,6 +568,13 @@ Func fuCreateTrackingSheet($aRemarks)
 		.Font.Size = 9
 		.Font.Bold = True
 		.Interior.ColorIndex = 15
+	EndWith
+
+	With $oAppl.ActiveSheet.PageSetup
+		.PaperSize = 5
+		.Zoom = False
+		.FitToPagesTall = 1
+		.FitToPagesWide = 1
 	EndWith
 
 	Local $aHeadings[1][9] = [["", "EXTENSION NUMBER", "PAGE SPAN", "AUTHOR / HOUSE MEMBER", "COMMENTS", "OPER-ATOR", "TIME OUT"]]
@@ -613,6 +628,8 @@ Func fuCreateProofingSheet($aRemarks)
 	Next
 
 	_ArrayDeleteCol($aRemarks, 2)
+
+	$oAppl.ActiveSheet.PageSetup.Orientation = 2
 
 	$oAppl.ActiveSheet.Columns("A:A").ColumnWidth = 1
 	$oAppl.ActiveSheet.Columns("B:B").ColumnWidth = 9
