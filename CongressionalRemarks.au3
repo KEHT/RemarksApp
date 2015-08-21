@@ -1,8 +1,11 @@
-﻿#Region ;**** Directives created by AutoIt3Wrapper_GUI ****
+#Region ;**** Directives created by AutoIt3Wrapper_GUI ****
 #AutoIt3Wrapper_UseX64=n
-#AutoIt3Wrapper_Res_Description=Application Processing Congressional Remarks Spreadsheet
-#AutoIt3Wrapper_Res_Fileversion=1.1.1.1
+#AutoIt3Wrapper_Res_Description=Reads congressional remarks spreadsheet and generates cover, tracking, and proofing sheets
+#AutoIt3Wrapper_Res_Fileversion=1.1.1.3
+#AutoIt3Wrapper_Res_Field=OriginalFilename|CongressionalRemarks.exe
 #AutoIt3Wrapper_Res_Fileversion_AutoIncrement=y
+#AutoIt3Wrapper_Res_ProductVersion=1.1
+#AutoIt3Wrapper_Res_Field=ProductName|Congressional Remarks Processor
 #AutoIt3Wrapper_Res_LegalCopyright=U.S. GPO
 #AutoIt3Wrapper_Res_Language=1033
 #AutoIt3Wrapper_Run_Tidy=y
@@ -385,9 +388,15 @@ Func fuProduceAllCoverSheets($aRemarks = '', $bAllButton = False)
 			$oDoc.Application.Selection.Range.InsertFile($sRegRemarksFile)
 		EndIf
 
-		_Word_DocFindReplace($oDoc, "<HAMMER NUMBER>", StringFormat("%02u", $aDateTime[1]) & " 8 " & $aRemarks[$iRemarkRec][1])
-		If @error Then MsgBox($MB_SYSTEMMODAL, "Word UDF: _Word_DocFindReplace <HAMMER NUMBER>", _
-				"Error replacing text in the document: <HAMMER NUMBER>" & @CRLF & "@error = " & @error & ", @extended = " & @extended)
+		If $aRemarks[$iRemarkRec][0] <> "" Then
+			_Word_DocFindReplace($oDoc, "<HAMMER NUMBER>", _GetKslugHammerNum($aRemarks[$iRemarkRec][1]))
+			If @error Then MsgBox($MB_SYSTEMMODAL, "Word UDF: _Word_DocFindReplace <HAMMER NUMBER>", _
+					"Error replacing text in the document: <HAMMER NUMBER>" & @CRLF & "@error = " & @error & ", @extended = " & @extended)
+		Else
+			_Word_DocFindReplace($oDoc, "<HAMMER NUMBER>", StringFormat("%02u", $aDateTime[1]) & " 8 " & $aRemarks[$iRemarkRec][1])
+			If @error Then MsgBox($MB_SYSTEMMODAL, "Word UDF: _Word_DocFindReplace <HAMMER NUMBER>", _
+					"Error replacing text in the document: <HAMMER NUMBER>" & @CRLF & "@error = " & @error & ", @extended = " & @extended)
+		EndIf
 		_Word_DocFindReplace($oDoc, "<TITLE>", $aRemarks[$iRemarkRec][7], $wdReplaceOne, Default, True)
 		If @error Then MsgBox($MB_SYSTEMMODAL, "Word UDF: _Word_DocFindReplace REMARK TITLE", _
 				"Error replacing text in the document: REMARK TITLE" & @CRLF & "@error = " & @error & ", @extended = " & @extended)
@@ -439,13 +448,20 @@ Func fuProduceAllCoverSheets($aRemarks = '', $bAllButton = False)
 			If @error Then MsgBox($MB_SYSTEMMODAL, "Word UDF: _Word_DocFindReplace Mr. (Madam)", _
 					"Error replacing text in the document: Mr. (Madam)" & @CRLF & "@error = " & @error & ", @extended = " & @extended)
 		EndIf
-		If $iRemarkRec <> 1 Then $oDoc.Application.Selection.Range.InsertBreak($wdPageBreak)
+		If $iRemarkRec > 1 Then $oDoc.Application.Selection.Range.InsertBreak($wdPageBreak)
 		$iProgress += 1
 		ProgressSet((100 / $aRemarks[0][0]) * ($iProgress), Int((100 / $aRemarks[0][0]) * ($iProgress)) & "%")
 	Next
 	ProgressSet(100, "Done!")
 	Sleep(750)
 	ProgressOff()
+
+	With $oDoc
+		If Asc(.Paragraphs(1).Range.Text) = 12 Then
+			.Paragraphs(1).Range.Delete()
+		EndIf
+	EndWith
+
 	$oWord.Visible = True
 	Return
 EndFunc   ;==>fuProduceAllCoverSheets
@@ -573,7 +589,7 @@ Func fuCreateTrackingSheet($aRemarks)
 	With $oAppl.ActiveSheet.PageSetup
 		.PaperSize = 5
 		.Zoom = False
-		.FitToPagesTall = 1
+		.FitToPagesTall = False
 		.FitToPagesWide = 1
 	EndWith
 
@@ -667,5 +683,26 @@ Func _GetVersion()
 		Return IniRead(@ScriptFullPath, "FileVersion", "#AutoIt3Wrapper_Res_Fileversion", "0.0.0.0")
 	EndIf
 EndFunc   ;==>_GetVersion
+
+Func _GetKslugHammerNum($iExt)
+	Local $mMonths = ObjCreate("Scripting.Dictionary")
+	$mMonths.ADD("January", "JA")
+	$mMonths.ADD("February", "FE")
+	$mMonths.ADD("March", "MR")
+	$mMonths.ADD("April", "AP")
+	$mMonths.ADD("May", "MY")
+	$mMonths.ADD("June", "JN")
+	$mMonths.ADD("July", "JY")
+	$mMonths.ADD("August", "AU")
+	$mMonths.ADD("September", "SE")
+	$mMonths.ADD("October", "OC")
+	$mMonths.ADD("November", "NO")
+	$mMonths.ADD("December", "DE")
+
+	Local $cDay = GUICtrlRead($hDate)
+	Local $aDateTime = StringSplit($cDay, ", ")
+	Local $cCaptureFileName = "K" & StringFormat("%02u", $aDateTime[4]) & $mMonths.ITEM($aDateTime[3]) & "8." & $iExt
+	Return $cCaptureFileName
+EndFunc   ;==>_GetKslugHammerNum
 
 
